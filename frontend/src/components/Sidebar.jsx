@@ -65,12 +65,12 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 px-6 h-16 border-b border-slate-200">
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-200">
+        <div className="flex items-center gap-2 px-6 h-16 border-b border-slate-200 dark:border-slate-800">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm">
             <CheckSquare size={20} />
           </div>
-          <span className="font-bold text-lg text-slate-900">Task Manager</span>
+          <span className="font-bold text-lg text-slate-900 dark:text-white">Task Manager</span>
         </div>
 
         <nav className="flex-1 px-3 py-6 space-y-1">
@@ -81,8 +81,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                   isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-400'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 }`
               }
             >
@@ -92,14 +92,14 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shrink-0">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 shrink-0">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{user?.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
             </div>
           </div>
           <div className="mb-3 flex items-center justify-between">
@@ -107,16 +107,16 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={toggleDarkMode}
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition"
+              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              {isDark ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} />}
+              {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
             </button>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 transition"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
           >
             <LogOut size={16} />
             Log out
@@ -125,14 +125,14 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white flex overflow-x-auto">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex overflow-x-auto">
         {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium min-w-[64px] ${
-                isActive ? 'text-primary-700' : 'text-slate-500'
+                isActive ? 'text-primary-700 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400'
               }`
             }
           >
@@ -143,7 +143,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={logout}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium text-rose-600 min-w-[64px]"
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 min-w-[64px]"
         >
           <LogOut size={18} />
           <span>Logout</span>
