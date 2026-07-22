@@ -1,6 +1,5 @@
 const ApiError = require('../utils/ApiError');
 
-
 function errorHandler(err, req, res, next) {
   let { statusCode, message } = err;
 

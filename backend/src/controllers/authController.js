@@ -15,7 +15,8 @@ const REFRESH_COOKIE_PATH = '/api/auth';
 const REFRESH_TOKEN_DAYS = 7;
 
 function refreshCookieOptions() {
-  const sameSite = process.env.COOKIE_SAME_SITE ;
+
+  const sameSite = process.env.COOKIE_SAME_SITE || 'lax';
   return {
     httpOnly: true,
     secure: sameSite === 'none' ? true : process.env.NODE_ENV === 'production',
@@ -30,6 +31,7 @@ function clearCookieOptions() {
   return { httpOnly, secure, sameSite, path };
 }
 
+
 async function issueTokenPair(res, user) {
   const jti = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
@@ -43,7 +45,6 @@ async function issueTokenPair(res, user) {
 
   return accessToken;
 }
-
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;

@@ -12,8 +12,7 @@ const ALLOWED_SORTS = {
 const TaskModel = {
   ALLOWED_STATUS,
   ALLOWED_PRIORITY,
-
- 
+  
   async findAll(userId, { search, status, priority, sort, page = 1, limit = 10 } = {}) {
     const clauses = ['user_id = ?'];
     const params = [userId];
@@ -124,6 +123,32 @@ const TaskModel = {
   },
 
   /**
+   * Bulk status update: only ever touches rows that belong to the
+   * requesting user, so passing someone else's task id is a silent
+   * no-op rather than an error, matching the single-task update/delete
+   * behavior elsewhere in this model.
+   */
+  async bulkUpdateStatus(ids, userId, status) {
+    if (!ids.length) return 0;
+    const placeholders = ids.map(() => '?').join(', ');
+    const [result] = await pool.query(
+      `UPDATE tasks SET status = ? WHERE id IN (${placeholders}) AND user_id = ?`,
+      [status, ...ids, userId]
+    );
+    return result.affectedRows;
+  },
+
+  async bulkRemove(ids, userId) {
+    if (!ids.length) return 0;
+    const placeholders = ids.map(() => '?').join(', ');
+    const [result] = await pool.query(
+      `DELETE FROM tasks WHERE id IN (${placeholders}) AND user_id = ?`,
+      [...ids, userId]
+    );
+    return result.affectedRows;
+  },
+
+  /**
    * Aggregates dashboard counters in a single round trip using
    * conditional SUM() rather than four separate queries.
    */
@@ -134,7 +159,10 @@ const TaskModel = {
         SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) AS inProgress,
         SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed,
-        SUM(CASE WHEN status != 'Completed' AND due_date < CURDATE() THEN 1 ELSE 0 END) AS overdue
+        SUM(CASE WHEN status != 'Completed' AND due_date < CURDATE() THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN priority = 'Low' THEN 1 ELSE 0 END) AS lowPriority,
+        SUM(CASE WHEN priority = 'Medium' THEN 1 ELSE 0 END) AS mediumPriority,
+        SUM(CASE WHEN priority = 'High' THEN 1 ELSE 0 END) AS highPriority
       FROM tasks
       WHERE user_id = ?`,
       [userId]
@@ -147,6 +175,11 @@ const TaskModel = {
       inProgress: Number(stats.inProgress) || 0,
       completed: Number(stats.completed) || 0,
       overdue: Number(stats.overdue) || 0,
+      byPriority: {
+        Low: Number(stats.lowPriority) || 0,
+        Medium: Number(stats.mediumPriority) || 0,
+        High: Number(stats.highPriority) || 0,
+      },
     };
   },
 };

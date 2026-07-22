@@ -64,4 +64,26 @@ const updateTaskValidator = [
 
 const idParamValidator = [param('id').isInt().withMessage('Invalid task id')];
 
-module.exports = { createTaskValidator, updateTaskValidator, idParamValidator };
+const bulkIdsValidator = [
+  body('ids')
+    .isArray({ min: 1 })
+    .withMessage('ids must be a non-empty array of task ids'),
+  body('ids.*').isInt().withMessage('Each id must be an integer'),
+];
+
+const bulkUpdateStatusValidator = [
+  ...bulkIdsValidator,
+  body('status')
+    .notEmpty()
+    .withMessage('Status is required')
+    .isIn(TaskModel.ALLOWED_STATUS)
+    .withMessage(`Status must be one of: ${TaskModel.ALLOWED_STATUS.join(', ')}`),
+];
+
+module.exports = {
+  createTaskValidator,
+  updateTaskValidator,
+  idParamValidator,
+  bulkIdsValidator,
+  bulkUpdateStatusValidator,
+};

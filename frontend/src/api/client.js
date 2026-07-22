@@ -85,6 +85,8 @@ export const taskApi = {
   update: (id, payload) => apiClient.put(`/tasks/${id}`, payload),
   remove: (id) => apiClient.delete(`/tasks/${id}`),
   getStats: () => apiClient.get('/tasks/stats/dashboard'),
+  bulkUpdateStatus: (ids, status) => apiClient.patch('/tasks/bulk/status', { ids, status }),
+  bulkRemove: (ids) => apiClient.delete('/tasks/bulk', { data: { ids } }),
 };
 
 export default apiClient;

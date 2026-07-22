@@ -54,6 +54,17 @@ jobs:
       - name: Load database schema
         run: mysql -h 127.0.0.1 -u root < database/schema.sql
 
+      - name: Run automated tests (Jest + Supertest)
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: ''
+          DB_NAME: task_management_test
+          JWT_SECRET: ci_test_secret
+          JWT_REFRESH_SECRET: ci_test_refresh_secret
+        run: npm test
+
       - name: Boot the API and smoke-test the health + login endpoints
         env:
           PORT: 5000

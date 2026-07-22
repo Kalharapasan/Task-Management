@@ -1,7 +1,6 @@
 const ApiError = require('../utils/ApiError');
 const { verifyAccessToken } = require('../utils/jwt');
 
-
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const [scheme, token] = authHeader.split(' ');

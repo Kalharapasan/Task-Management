@@ -2,12 +2,7 @@ const TaskModel = require('../models/taskModel');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
-/**
- * GET /api/tasks
- * Supports optional query params: search, status, priority, sort.
- * Multiple filters can be combined, e.g.
- * /api/tasks?status=Pending&priority=High&search=report&sort=due_date
- */
+
 const getTasks = asyncHandler(async (req, res) => {
   const { search, status, priority, sort, page, limit } = req.query;
 
@@ -101,6 +96,32 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { stats } });
 });
 
+// PATCH /api/tasks/bulk/status - body: { ids: number[], status: string }
+const bulkUpdateStatus = asyncHandler(async (req, res) => {
+  const { ids, status } = req.body;
+
+  const affected = await TaskModel.bulkUpdateStatus(ids, req.user.id, status);
+
+  res.status(200).json({
+    success: true,
+    message: `${affected} task(s) updated to "${status}"`,
+    data: { affected },
+  });
+});
+
+// DELETE /api/tasks/bulk - body: { ids: number[] }
+const bulkDeleteTasks = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+
+  const affected = await TaskModel.bulkRemove(ids, req.user.id);
+
+  res.status(200).json({
+    success: true,
+    message: `${affected} task(s) deleted`,
+    data: { affected },
+  });
+});
+
 module.exports = {
   getTasks,
   getTaskById,
@@ -108,4 +129,6 @@ module.exports = {
   updateTask,
   deleteTask,
   getDashboardStats,
+  bulkUpdateStatus,
+  bulkDeleteTasks,
 };
