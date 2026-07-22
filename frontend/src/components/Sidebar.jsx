@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,11 +10,28 @@ import {
   Shield,
   Briefcase,
   User,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const { user, isAdmin, isTaskManager, canManageUsers, canManageTasks, logout } = useAuth();
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleDarkMode = () => setIsDark((prev) => !prev);
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -85,8 +102,16 @@ export default function Sidebar() {
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
           </div>
-          <div className="mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <RoleBadge />
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition"
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDark ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} />}
+            </button>
           </div>
           <button
             type="button"
