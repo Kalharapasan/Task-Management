@@ -8,6 +8,7 @@ jobs:
   deploy-backend:
     name: Deploy backend to Vercel
     runs-on: ubuntu-latest
+    if: ${{ secrets.VERCEL_TOKEN != '' }}
     defaults:
       run:
         working-directory: backend
@@ -42,9 +43,8 @@ jobs:
   deploy-frontend:
     name: Deploy frontend to Vercel
     runs-on: ubuntu-latest
-    # Deploy the frontend after the backend so, on the very first deploy,
-    # the backend URL is already live before the frontend build points at it.
     needs: deploy-backend
+    if: ${{ secrets.VERCEL_TOKEN != '' }}
     defaults:
       run:
         working-directory: frontend

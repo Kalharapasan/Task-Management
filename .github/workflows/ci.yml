@@ -46,16 +46,22 @@ jobs:
             node --check "$f"
           done
 
-      - name: Load database schema
-        run: mysql -h 127.0.0.1 -u root < database/schema.sql
+      - name: Initialize database schema & demo data
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: ''
+          DB_NAME: task_management
+        run: npm run init
 
       - name: Run automated tests (Jest + Supertest)
         env:
-          DB_HOST: sql12.freesqldatabase.com
+          DB_HOST: 127.0.0.1
           DB_PORT: 3306
-          DB_USER: sql12833613
-          DB_PASSWORD: 'pEnw7u4WGk'
-          DB_NAME: sql12833613
+          DB_USER: root
+          DB_PASSWORD: ''
+          DB_NAME: task_management
           JWT_SECRET: 3c9f1e8b7a4d2f6c9a1e5b8d7f2c4a9e6b1d8f3a7c5e9f2b4d6a8c1e3f5b7d9
           JWT_REFRESH_SECRET: 8e4a2c7f1d9b6e3a5f8c2d7b9a1e4f6c3b8d5a2f7e9c1d4b6a3f8e5c2d7b9a1
         run: npm test
@@ -64,12 +70,12 @@ jobs:
         env:
           PORT: 5000
           NODE_ENV: test
-          CLIENT_URL: https://task-management-frontend-psi-ruddy.vercel.app/login
-          DB_HOST: sql12.freesqldatabase.com
+          CLIENT_URL: http://localhost:5173
+          DB_HOST: 127.0.0.1
           DB_PORT: 3306
-          DB_NAME: sql12833613
-          DB_USER: sql12833613
-          DB_PASSWORD: 'pEnw7u4WGk'
+          DB_NAME: task_management
+          DB_USER: root
+          DB_PASSWORD: ''
           JWT_SECRET: 3c9f1e8b7a4d2f6c9a1e5b8d7f2c4a9e6b1d8f3a7c5e9f2b4d6a8c1e3f5b7d9
           JWT_REFRESH_SECRET: 8e4a2c7f1d9b6e3a5f8c2d7b9a1e4f6c3b8d5a2f7e9c1d4b6a3f8e5c2d7b9a1
           ACCESS_TOKEN_EXPIRES_IN: 15m
@@ -79,7 +85,7 @@ jobs:
           SERVER_PID=$!
           sleep 3
 
-          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" https://task-management-backend-mu-three.vercel.app/api/health)
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/api/health)
           if [ "$HEALTH" != "200" ]; then
             echo "Health check failed (HTTP $HEALTH)"
             kill $SERVER_PID
@@ -87,7 +93,7 @@ jobs:
           fi
 
           LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST https://task-management-backend-mu-three.vercel.app/api/auth/login \
+            -X POST http://127.0.0.1:5000/api/auth/login \
             -H "Content-Type: application/json" \
             -d '{"email":"admin@test.com","password":"123456"}')
           if [ "$LOGIN_STATUS" != "200" ]; then
