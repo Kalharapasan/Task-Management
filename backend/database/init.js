@@ -28,9 +28,13 @@ async function init() {
   const db = process.env.DB_NAME || 'sql12833613';
   console.log(`Connected to MySQL at ${process.env.DB_HOST}:${process.env.DB_PORT}`);
 
-  await connection.query(
-    `CREATE DATABASE IF NOT EXISTS \`${db}\` CHARACTER SET utf8 COLLATE utf8_general_ci`
-  );
+  try {
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${db}\` CHARACTER SET utf8 COLLATE utf8_general_ci`
+    );
+  } catch (err) {
+    // Shared/Cloud hosting user may not have global CREATE DATABASE permissions; continue to USE
+  }
   await connection.query(`USE \`${db}\``);
   console.log(`Database '${db}' ready.\n`);
 
