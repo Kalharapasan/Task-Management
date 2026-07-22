@@ -15,7 +15,7 @@ const REFRESH_COOKIE_PATH = '/api/auth';
 const REFRESH_TOKEN_DAYS = 7;
 
 function refreshCookieOptions() {
-  const sameSite = process.env.COOKIE_SAME_SITE || 'lax';
+  const sameSite = process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax');
   return {
     httpOnly: true,
     secure: sameSite === 'none' ? true : process.env.NODE_ENV === 'production',

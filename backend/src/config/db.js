@@ -5,9 +5,9 @@ require('dotenv').config();
 const dbName = process.env.DB_NAME || 'sql12833613';
 
 // Create pool without hardcoded initial database parameter so connection can create database if missing
-const pool = mysql.createPool({
+const poolConfig = {
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   waitForConnections: true,
@@ -17,7 +17,13 @@ const pool = mysql.createPool({
   connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-});
+};
+
+if (process.env.DB_SSL === 'true' || process.env.DB_SSL === '1') {
+  poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = mysql.createPool(poolConfig);
 
 async function runSql(connection, sql, label) {
   try {
@@ -268,8 +274,19 @@ async function testConnection() {
   } catch (error) {
     console.error('Unable to connect to MySQL:', error.message);
     console.error('Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME in your .env file.');
-    process.exit(1);
+    throw error;
   }
 }
 
-module.exports = { pool, testConnection };
+let initPromise = null;
+async function ensureDbInitialized() {
+  if (!initPromise) {
+    initPromise = testConnection().catch((err) => {
+      initPromise = null;
+      throw err;
+    });
+  }
+  return initPromise;
+}
+
+module.exports = { pool, testConnection, ensureDbInitialized };

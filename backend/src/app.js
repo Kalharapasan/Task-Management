@@ -12,6 +12,8 @@ const projectRoutes = require('./routes/projectRoutes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
+const { ensureDbInitialized, testConnection } = require('./config/db');
+
 const app = express();
 
 app.use(helmet());
@@ -28,10 +30,15 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some((o) => origin.startsWith(o))) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.some((o) => origin.startsWith(o)) ||
+        origin.endsWith('.vercel.app')
+      ) {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback to allow dev/prod client requests
+      return callback(null, true); // Fallback to allow client requests
     },
     credentials: true,
   })
@@ -49,7 +56,27 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'API is healthy' });
 });
 
-// Applied after /health so uptime checks are never throttled.
+// Endpoint to manually trigger DB initialization / table migration & seeding
+app.get('/api/init-db', async (req, res, next) => {
+  try {
+    await testConnection();
+    res.status(200).json({ success: true, message: 'Database initialized & seeded successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Middleware to ensure DB schema is ready on serverless function invocations
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Applied after /health and db init check so uptime checks are never throttled.
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);

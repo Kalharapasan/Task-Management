@@ -8,14 +8,12 @@ function errorHandler(err, req, res, next) {
     message = err.message || 'Internal server error';
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('[API Error]', err);
-  }
+  console.error('[API Error]', err);
 
   res.status(statusCode || 500).json({
     success: false,
     message: message || 'Something went wrong',
-    error: process.env.NODE_ENV !== 'production' ? err.message : undefined,
+    error: err.message,
   });
 }
 
