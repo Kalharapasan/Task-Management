@@ -56,7 +56,7 @@ const ProjectModel = {
     if (!rows[0]) return null;
 
     const [tasks] = await pool.query(
-      `SELECT t.id, t.title, t.description, t.priority, t.status, t.due_date, t.assigned_to,
+      `SELECT t.id, t.title, t.description, t.completion_note, t.priority, t.status, t.due_date, t.assigned_to,
               u.name AS assigned_to_name
        FROM tasks t
        LEFT JOIN users u ON u.id = t.assigned_to
@@ -64,6 +64,19 @@ const ProjectModel = {
        ORDER BY t.due_date ASC`,
       [id]
     );
+
+    // Fetch commit activity logs for project tasks
+    for (const t of tasks) {
+      const [commits] = await pool.query(
+        `SELECT c.id, c.status, c.note, c.created_at, u.name AS user_name, u.role AS user_role
+         FROM task_commits c
+         LEFT JOIN users u ON u.id = c.user_id
+         WHERE c.task_id = ?
+         ORDER BY c.created_at DESC`,
+        [t.id]
+      );
+      t.commits = commits;
+    }
 
     return { ...rows[0], tasks };
   },

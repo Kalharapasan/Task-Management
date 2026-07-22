@@ -80,7 +80,7 @@ async function init() {
   `);
 
   await connection.query(`
-    CREATE TABLE refresh_tokens (
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       jti VARCHAR(36) NOT NULL UNIQUE,
@@ -88,6 +88,21 @@ async function init() {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_refresh_tokens_user_id(user_id),
       CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+  `);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS task_commits (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      task_id INT NOT NULL,
+      user_id INT NOT NULL,
+      status ENUM('Pending', 'In Progress', 'Completed') NOT NULL,
+      note TEXT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_commits_task_id(task_id),
+      INDEX idx_commits_user_id(user_id),
+      CONSTRAINT fk_commits_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+      CONSTRAINT fk_commits_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8
   `);
 

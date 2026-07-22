@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Plus, FolderKanban, Pencil, Trash2, X, CheckCircle2, Clock, PauseCircle,
-  Eye, User, MessageSquare, Calendar, ListChecks,
+  Eye, User, MessageSquare, Calendar, ListChecks, History,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -138,7 +138,7 @@ export default function Projects() {
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Projects</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Click any project card to view its task updates and employee work commit notes.
+            Click any project card to view its task updates and employee work commit logs.
           </p>
         </div>
 
@@ -281,7 +281,6 @@ export default function Projects() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Project overview banner */}
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <ProjectStatusBadge status={summaryProject.status} />
@@ -292,12 +291,11 @@ export default function Projects() {
                 )}
               </div>
 
-              {/* Tasks List with Commit Notes */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <ListChecks size={18} className="text-primary-600" />
-                    <span>Project Tasks ({summaryProject.tasks?.length || 0})</span>
+                    <span>Project Tasks & Employee Commits ({summaryProject.tasks?.length || 0})</span>
                   </h3>
                 </div>
 
@@ -322,8 +320,28 @@ export default function Projects() {
                           </div>
                         </div>
 
-                        {/* Work Commit Note display */}
-                        {task.completion_note && (
+                        {/* Multi-Employee Work Commit History Log */}
+                        {task.commits && task.commits.length > 0 ? (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                              <History size={12} className="text-primary-600" />
+                              <span>Employee Commit History Log ({task.commits.length}):</span>
+                            </p>
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                              {task.commits.map((c) => (
+                                <div key={c.id} className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-semibold text-emerald-950">
+                                      {c.user_name} <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1 py-0.2 rounded font-normal capitalize">{c.user_role}</span>
+                                    </span>
+                                    <StatusBadge status={c.status} />
+                                  </div>
+                                  {c.note && <p className="text-emerald-900 mt-1">{c.note}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : task.completion_note ? (
                           <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mt-2 flex items-start gap-1.5">
                             <MessageSquare size={14} className="mt-0.5 shrink-0 text-emerald-600" />
                             <div>
@@ -331,7 +349,7 @@ export default function Projects() {
                               <p className="text-emerald-800 mt-0.5">{task.completion_note}</p>
                             </div>
                           </div>
-                        )}
+                        ) : null}
 
                         <div className="flex items-center justify-between text-xs text-slate-500 mt-3 pt-2 border-t border-slate-100">
                           <span className="flex items-center gap-1">

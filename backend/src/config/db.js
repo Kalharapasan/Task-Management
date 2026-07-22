@@ -211,6 +211,22 @@ async function testConnection() {
       'create refresh_tokens table'
     );
 
+    // 5. Ensure task_commits table exists (for multi-employee task work log)
+    await runSql(
+      connection,
+      `CREATE TABLE IF NOT EXISTS task_commits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        task_id INT NOT NULL,
+        user_id INT NOT NULL,
+        status ENUM('Pending', 'In Progress', 'Completed') NOT NULL,
+        note TEXT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_commits_task_id(task_id),
+        INDEX idx_commits_user_id(user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8`,
+      'create task_commits table'
+    );
+
     // 5. Ensure missing columns are added if tables already existed
     await runSql(
       connection,

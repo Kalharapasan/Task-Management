@@ -25,11 +25,26 @@ const TaskModel = {
   ALLOWED_STATUS,
   ALLOWED_PRIORITY,
 
-  /**
-   * findAll
-   * isAdminOrManager=true  → returns all tasks matching filters
-   * isAdminOrManager=false → returns only tasks assigned to the employee
-   */
+  async getCommits(taskId) {
+    const [rows] = await pool.query(
+      `SELECT c.id, c.status, c.note, c.created_at, u.name AS user_name, u.role AS user_role
+       FROM task_commits c
+       LEFT JOIN users u ON u.id = c.user_id
+       WHERE c.task_id = ?
+       ORDER BY c.created_at DESC`,
+      [taskId]
+    );
+    return rows;
+  },
+
+  async addCommit(taskId, userId, status, note) {
+    if (!status && !note) return;
+    await pool.query(
+      `INSERT INTO task_commits (task_id, user_id, status, note) VALUES (?, ?, ?, ?)`,
+      [taskId, userId, status, note || null]
+    );
+  },
+
   async findAll(userId, role, { search, status, priority, sort, page = 1, limit = 10, projectId } = {}) {
     const isManagerOrAdmin = role === 'admin' || role === 'task_manager';
     const clauses = isManagerOrAdmin ? [] : ['t.assigned_to = ?'];
@@ -89,7 +104,10 @@ const TaskModel = {
     const params = isManagerOrAdmin ? [id] : [id, userId];
 
     const [rows] = await pool.query(`${BASE_SELECT} ${where} LIMIT 1`, params);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+
+    const commits = await this.getCommits(id);
+    return { ...rows[0], commits };
   },
 
   async create(userId, { title, description, priority, status, due_date, assigned_to, project_id, completion_note }) {
@@ -108,7 +126,13 @@ const TaskModel = {
         due_date,
       ]
     );
-    return this.findById(result.insertId, userId, 'admin');
+
+    const createdId = result.insertId;
+    if (completion_note || status) {
+      await this.addCommit(createdId, userId, status, completion_note || 'Task created');
+    }
+
+    return this.findById(createdId, userId, 'admin');
   },
 
   async update(id, userId, role, fields) {
@@ -144,6 +168,17 @@ const TaskModel = {
     );
 
     if (result.affectedRows === 0) return null;
+
+    // Record commit activity log if status or completion_note was updated
+    if (fields.status || fields.completion_note) {
+      await this.addCommit(
+        id,
+        userId,
+        fields.status || 'In Progress',
+        fields.completion_note || `Status updated to ${fields.status}`
+      );
+    }
+
     return this.findById(id, userId, role);
   },
 
