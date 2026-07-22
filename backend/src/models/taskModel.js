@@ -1,6 +1,6 @@
 const { pool } = require('../config/db');
 
-const DB = `\`${process.env.DB_NAME || 'sql12833613'}\``;
+const DB = `\`${process.env.DB_NAME || 'task_management'}\``;
 const ALLOWED_STATUS = ['Pending', 'In Progress', 'Completed'];
 const ALLOWED_PRIORITY = ['Low', 'Medium', 'High'];
 

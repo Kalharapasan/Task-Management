@@ -1,6 +1,6 @@
 const { pool } = require('../config/db');
 
-const DB = `\`${process.env.DB_NAME || 'sql12833613'}\``;
+const DB = `\`${process.env.DB_NAME}\``;
 const ALLOWED_PROJECT_STATUS = ['Active', 'Completed', 'On Hold'];
 
 const ProjectModel = {

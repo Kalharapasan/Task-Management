@@ -42,7 +42,7 @@ async function issueTokenPair(res, user) {
 
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());
 
-  return accessToken;
+  return { accessToken, refreshToken };
 }
 
 // POST /api/auth/register  (public — creates an employee account)
@@ -78,13 +78,14 @@ const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, 'Invalid email or password');
   }
 
-  const accessToken = await issueTokenPair(res, user);
+  const { accessToken, refreshToken } = await issueTokenPair(res, user);
 
   res.status(200).json({
     success: true,
     message: 'Login successful',
     data: {
       accessToken,
+      refreshToken,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     },
   });
@@ -92,7 +93,7 @@ const login = asyncHandler(async (req, res) => {
 
 // POST /api/auth/refresh
 const refresh = asyncHandler(async (req, res) => {
-  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+  const token = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
   if (!token) {
     throw new ApiError(401, 'No refresh token provided');
   }
@@ -118,13 +119,14 @@ const refresh = asyncHandler(async (req, res) => {
     throw new ApiError(401, 'User no longer exists');
   }
 
-  const accessToken = await issueTokenPair(res, user);
+  const { accessToken, refreshToken: newRefreshToken } = await issueTokenPair(res, user);
 
   res.status(200).json({
     success: true,
     message: 'Token refreshed',
     data: {
       accessToken,
+      refreshToken: newRefreshToken,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     },
   });
@@ -132,7 +134,7 @@ const refresh = asyncHandler(async (req, res) => {
 
 // POST /api/auth/logout
 const logout = asyncHandler(async (req, res) => {
-  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+  const token = req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
 
   if (token) {
     try {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +9,7 @@ const apiClient = axios.create({
 });
 
 let accessToken = null;
+let refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
 
 export function setAccessToken(token) {
   accessToken = token;
@@ -16,6 +17,17 @@ export function setAccessToken(token) {
 
 export function getAccessToken() {
   return accessToken;
+}
+
+export function setRefreshToken(token) {
+  refreshToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('refreshToken', token);
+    } else {
+      localStorage.removeItem('refreshToken');
+    }
+  }
 }
 
 apiClient.interceptors.request.use((config) => {
@@ -40,9 +52,18 @@ apiClient.interceptors.response.use(
 
       try {
         if (!refreshPromise) {
-          refreshPromise = apiClient.post('/auth/refresh').finally(() => {
-            refreshPromise = null;
-          });
+          const activeRefreshToken = refreshToken || (typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null);
+          refreshPromise = apiClient
+            .post('/auth/refresh', { refreshToken: activeRefreshToken })
+            .then((res) => {
+              if (res.data?.data?.refreshToken) {
+                setRefreshToken(res.data.data.refreshToken);
+              }
+              return res;
+            })
+            .finally(() => {
+              refreshPromise = null;
+            });
         }
         const refreshResponse = await refreshPromise;
         setAccessToken(refreshResponse.data.data.accessToken);
@@ -50,7 +71,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         setAccessToken(null);
-        if (window.location.pathname !== '/login') {
+        setRefreshToken(null);
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -62,10 +84,27 @@ apiClient.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email, password) => apiClient.post('/auth/login', { email, password }),
+  login: async (email, password) => {
+    const res = await apiClient.post('/auth/login', { email, password });
+    if (res.data?.data?.refreshToken) {
+      setRefreshToken(res.data.data.refreshToken);
+    }
+    return res;
+  },
   register: (name, email, password) => apiClient.post('/auth/register', { name, email, password }),
-  refresh: (config) => apiClient.post('/auth/refresh', undefined, config),
-  logout: () => apiClient.post('/auth/logout'),
+  refresh: (config) => {
+    const activeRefreshToken = refreshToken || (typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null);
+    return apiClient.post('/auth/refresh', { refreshToken: activeRefreshToken }, config);
+  },
+  logout: async () => {
+    const activeRefreshToken = refreshToken || (typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null);
+    try {
+      await apiClient.post('/auth/logout', { refreshToken: activeRefreshToken });
+    } finally {
+      setRefreshToken(null);
+      setAccessToken(null);
+    }
+  },
   me: () => apiClient.get('/auth/me'),
 };
 

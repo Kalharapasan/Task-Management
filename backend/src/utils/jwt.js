@@ -1,17 +1,16 @@
 const jwt = require('jsonwebtoken');
 
-
 function signAccessToken(payload) {
   const expiresIn =
     process.env.ACCESS_TOKEN_EXPIRES_IN && process.env.ACCESS_TOKEN_EXPIRES_IN !== 'undefined'
       ? process.env.ACCESS_TOKEN_EXPIRES_IN
       : '15m';
-  const secret = process.env.JWT_SECRET 
+  const secret = process.env.JWT_SECRET || 'test_jwt_secret_fallback_key';
   return jwt.sign(payload, secret, { expiresIn });
 }
 
 function verifyAccessToken(token) {
-  const secret = process.env.JWT_SECRET ;
+  const secret = process.env.JWT_SECRET || 'test_jwt_secret_fallback_key';
   return jwt.verify(token, secret);
 }
 
@@ -20,12 +19,12 @@ function signRefreshToken(payload) {
     process.env.REFRESH_TOKEN_EXPIRES_IN && process.env.REFRESH_TOKEN_EXPIRES_IN !== 'undefined'
       ? process.env.REFRESH_TOKEN_EXPIRES_IN
       : '7d';
-  const secret = process.env.JWT_REFRESH_SECRET ;
+  const secret = process.env.JWT_REFRESH_SECRET || 'test_jwt_refresh_secret_fallback_key';
   return jwt.sign(payload, secret, { expiresIn });
 }
 
 function verifyRefreshToken(token) {
-  const secret = process.env.JWT_REFRESH_SECRET ;
+  const secret = process.env.JWT_REFRESH_SECRET || 'test_jwt_refresh_secret_fallback_key';
   return jwt.verify(token, secret);
 }
 

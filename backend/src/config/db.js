@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-const dbName = process.env.DB_NAME || 'sql12833613';
+const dbName = process.env.DB_NAME;
 
 // Create pool without hardcoded initial database parameter so connection can create database if missing
 const poolConfig = {

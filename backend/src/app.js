@@ -16,6 +16,8 @@ const { ensureDbInitialized, testConnection } = require('./config/db');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(compression());
 
