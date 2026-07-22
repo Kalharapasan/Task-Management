@@ -1,7 +1,22 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { authApi, setAccessToken } from '../api/client';
 
-const AuthContext = createContext(null);
+const defaultContextValue = {
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  isAdmin: false,
+  isTaskManager: false,
+  isEmployee: false,
+  canManageTasks: false,
+  canManageProjects: false,
+  canManageUsers: false,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+};
+
+const AuthContext = createContext(defaultContextValue);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -85,8 +100,5 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return context || defaultContextValue;
 }

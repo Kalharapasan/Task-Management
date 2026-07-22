@@ -8,18 +8,25 @@ const ProjectModel = {
   async findAll(userId, role) {
     const isEmployee = role === 'employee';
 
-    // Query aggregates total_tasks and completed_tasks for progress calculations
+    // Subquery tasks count grouped by project_id for MySQL 8.0 ONLY_FULL_GROUP_BY compliance
     const sql = `
       SELECT
         p.id, p.name, p.description, p.status, p.created_by, p.created_at, p.updated_at,
         u.name AS creator_name,
-        COUNT(t.id) AS total_tasks,
-        SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) AS completed_tasks
+        COALESCE(t.total_tasks, 0) AS total_tasks,
+        COALESCE(t.completed_tasks, 0) AS completed_tasks
       FROM projects p
       LEFT JOIN users u ON u.id = p.created_by
-      LEFT JOIN tasks t ON t.project_id = p.id
-      ${isEmployee ? 'WHERE t.assigned_to = ? OR p.created_by = ?' : ''}
-      GROUP BY p.id
+      LEFT JOIN (
+        SELECT
+          project_id,
+          COUNT(*) AS total_tasks,
+          SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed_tasks
+        FROM tasks
+        ${isEmployee ? 'WHERE assigned_to = ?' : ''}
+        GROUP BY project_id
+      ) t ON t.project_id = p.id
+      ${isEmployee ? 'WHERE p.created_by = ? OR t.project_id IS NOT NULL' : ''}
       ORDER BY p.created_at DESC
     `;
 
