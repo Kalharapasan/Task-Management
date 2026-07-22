@@ -1,5 +1,9 @@
 # Task Management System
 
+🚀 **Live Deployment Links:**
+- **Frontend App:** [https://task-management-frontend-psi-ruddy.vercel.app](https://task-management-frontend-psi-ruddy.vercel.app)
+- **Backend API:** [https://task-management-backend-mu-three.vercel.app](https://task-management-backend-mu-three.vercel.app)
+
 A full-stack Task Management System built for the Koncepthive Full Stack Web Developer
 Intern technical assessment. Users authenticate with a single seeded account and manage
 their daily tasks: create, view, update, delete, search, filter, and sort.
