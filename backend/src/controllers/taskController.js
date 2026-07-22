@@ -4,11 +4,16 @@ const asyncHandler = require('../utils/asyncHandler');
 
 // GET /api/tasks
 const getTasks = asyncHandler(async (req, res) => {
-  const { search, status, priority, sort, page, limit } = req.query;
-  const isAdmin = req.user.role === 'admin';
+  const { search, status, priority, sort, page, limit, projectId } = req.query;
 
-  const { tasks, pagination } = await TaskModel.findAll(req.user.id, isAdmin, {
-    search, status, priority, sort, page, limit,
+  const { tasks, pagination } = await TaskModel.findAll(req.user.id, req.user.role, {
+    search,
+    status,
+    priority,
+    sort,
+    page,
+    limit,
+    projectId,
   });
 
   res.status(200).json({ success: true, count: tasks.length, data: { tasks, pagination } });
@@ -16,20 +21,25 @@ const getTasks = asyncHandler(async (req, res) => {
 
 // GET /api/tasks/:id
 const getTaskById = asyncHandler(async (req, res) => {
-  const isAdmin = req.user.role === 'admin';
-  const task = await TaskModel.findById(req.params.id, req.user.id, isAdmin);
+  const task = await TaskModel.findById(req.params.id, req.user.id, req.user.role);
   if (!task) throw new ApiError(404, 'Task not found');
 
   res.status(200).json({ success: true, data: { task } });
 });
 
-// POST /api/tasks  (admin only — enforced at route level)
+// POST /api/tasks (Admin & Task Manager)
 const createTask = asyncHandler(async (req, res) => {
-  const { title, description, priority, status, due_date, assigned_to } = req.body;
+  const { title, description, priority, status, due_date, assigned_to, project_id, completion_note } = req.body;
 
   const task = await TaskModel.create(req.user.id, {
-    title, description, priority, status, due_date,
+    title,
+    description,
+    priority,
+    status,
+    due_date,
     assigned_to: assigned_to || null,
+    project_id: project_id || null,
+    completion_note: completion_note || null,
   });
 
   res.status(201).json({
@@ -40,37 +50,37 @@ const createTask = asyncHandler(async (req, res) => {
 });
 
 // PUT /api/tasks/:id
-// Admin: full update including re-assignment
-// Employee: status-only update on their assigned tasks
+// Admin & Task Manager: full update
+// Employee: status and completion_note commit update
 const updateTask = asyncHandler(async (req, res) => {
-  const isAdmin = req.user.role === 'admin';
+  const isManagerOrAdmin = req.user.role === 'admin' || req.user.role === 'task_manager';
 
-  const existing = await TaskModel.findById(req.params.id, req.user.id, isAdmin);
-  if (!existing) throw new ApiError(404, 'Task not found');
+  const existing = await TaskModel.findById(req.params.id, req.user.id, req.user.role);
+  if (!existing) throw new ApiError(404, 'Task not found or permission denied');
 
   let fields;
-  if (isAdmin) {
-    const { title, description, priority, status, due_date, assigned_to } = req.body;
-    fields = { title, description, priority, status, due_date, assigned_to };
+  if (isManagerOrAdmin) {
+    const { title, description, priority, status, due_date, assigned_to, project_id, completion_note } = req.body;
+    fields = { title, description, priority, status, due_date, assigned_to, project_id, completion_note };
   } else {
-    // Employees may only change status
-    const { status } = req.body;
+    // Employee updating assigned task status and adding commit notes
+    const { status, completion_note } = req.body;
     if (!status) throw new ApiError(400, 'Status is required');
     if (!TaskModel.ALLOWED_STATUS.includes(status)) {
       throw new ApiError(400, `Status must be one of: ${TaskModel.ALLOWED_STATUS.join(', ')}`);
     }
-    fields = { status };
+    fields = { status, completion_note };
   }
 
-  const task = await TaskModel.update(req.params.id, req.user.id, isAdmin, fields);
+  const task = await TaskModel.update(req.params.id, req.user.id, req.user.role, fields);
   if (!task) throw new ApiError(404, 'Task not found or update not permitted');
 
   res.status(200).json({ success: true, message: 'Task updated successfully', data: { task } });
 });
 
-// DELETE /api/tasks/:id  (admin only — enforced at route level)
+// DELETE /api/tasks/:id (Admin & Task Manager)
 const deleteTask = asyncHandler(async (req, res) => {
-  const existing = await TaskModel.findById(req.params.id, req.user.id, true);
+  const existing = await TaskModel.findById(req.params.id, req.user.id, req.user.role);
   if (!existing) throw new ApiError(404, 'Task not found');
 
   await TaskModel.remove(req.params.id);
@@ -80,16 +90,14 @@ const deleteTask = asyncHandler(async (req, res) => {
 
 // GET /api/tasks/stats/dashboard
 const getDashboardStats = asyncHandler(async (req, res) => {
-  const isAdmin = req.user.role === 'admin';
-  const stats = await TaskModel.getStats(req.user.id, isAdmin);
-
+  const stats = await TaskModel.getStats(req.user.id, req.user.role);
   res.status(200).json({ success: true, data: { stats } });
 });
 
-// PATCH /api/tasks/bulk/status  (admin only — enforced at route level)
+// PATCH /api/tasks/bulk/status (Admin & Task Manager)
 const bulkUpdateStatus = asyncHandler(async (req, res) => {
   const { ids, status } = req.body;
-  const affected = await TaskModel.bulkUpdateStatus(ids, req.user.id, status);
+  const affected = await TaskModel.bulkUpdateStatus(ids, status);
 
   res.status(200).json({
     success: true,
@@ -98,10 +106,10 @@ const bulkUpdateStatus = asyncHandler(async (req, res) => {
   });
 });
 
-// DELETE /api/tasks/bulk  (admin only — enforced at route level)
+// DELETE /api/tasks/bulk (Admin & Task Manager)
 const bulkDeleteTasks = asyncHandler(async (req, res) => {
   const { ids } = req.body;
-  const affected = await TaskModel.bulkRemove(ids, req.user.id);
+  const affected = await TaskModel.bulkRemove(ids);
 
   res.status(200).json({
     success: true,
@@ -111,6 +119,12 @@ const bulkDeleteTasks = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  getTasks, getTaskById, createTask, updateTask,
-  deleteTask, getDashboardStats, bulkUpdateStatus, bulkDeleteTasks,
+  getTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+  getDashboardStats,
+  bulkUpdateStatus,
+  bulkDeleteTasks,
 };

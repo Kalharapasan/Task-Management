@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
     try {
       await authApi.logout();
     } catch {
-      // Even if the network call fails, still clear local auth state.
+      // Ignore network logout errors
     } finally {
       setAccessToken(null);
       setUser(null);
@@ -59,12 +59,22 @@ export function AuthProvider({ children }) {
   }, []);
 
   const isAdmin = user?.role === 'admin';
+  const isTaskManager = user?.role === 'task_manager';
+  const isEmployee = user?.role === 'employee';
+  const canManageTasks = isAdmin || isTaskManager;
+  const canManageProjects = isAdmin || isTaskManager;
+  const canManageUsers = isAdmin;
 
   const value = {
     user,
     isLoading,
     isAuthenticated: !!user,
     isAdmin,
+    isTaskManager,
+    isEmployee,
+    canManageTasks,
+    canManageProjects,
+    canManageUsers,
     login,
     register,
     logout,

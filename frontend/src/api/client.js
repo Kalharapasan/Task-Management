@@ -1,11 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-
   withCredentials: true,
 });
 
@@ -26,14 +25,14 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-
 let refreshPromise = null;
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/login') ||
       originalRequest?.url?.includes('/auth/refresh');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
@@ -72,10 +71,21 @@ export const authApi = {
 
 export const userApi = {
   getEmployees: () => apiClient.get('/users/employees'),
+  getAllUsers: () => apiClient.get('/users'),
+  updateRole: (id, role) => apiClient.patch(`/users/${id}/role`, { role }),
+};
+
+export const projectApi = {
+  getAll: () => apiClient.get('/projects'),
+  getById: (id) => apiClient.get(`/projects/${id}`),
+  create: (payload) => apiClient.post('/projects', payload),
+  update: (id, payload) => apiClient.put(`/projects/${id}`, payload),
+  remove: (id) => apiClient.delete(`/projects/${id}`),
+  getReport: () => apiClient.get('/projects/stats/report'),
 };
 
 export const taskApi = {
-  getAll: (params) => apiClient.get('/tasks', { params }), // params may include page/limit
+  getAll: (params) => apiClient.get('/tasks', { params }),
   getById: (id) => apiClient.get(`/tasks/${id}`),
   create: (payload) => apiClient.post('/tasks', payload),
   update: (id, payload) => apiClient.put(`/tasks/${id}`, payload),
