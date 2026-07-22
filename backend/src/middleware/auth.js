@@ -25,5 +25,13 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
+function requireManagerOrAdmin(req, res, next) {
+  if (req.user?.role !== 'admin' && req.user?.role !== 'task_manager') {
+    return next(new ApiError(403, 'Admin or Task Manager access required'));
+  }
+  return next();
+}
+
 module.exports = requireAuth;
 module.exports.requireAdmin = requireAdmin;
+module.exports.requireManagerOrAdmin = requireManagerOrAdmin;

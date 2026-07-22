@@ -9,15 +9,16 @@ const ALLOWED_SORTS = {
   due_date: 't.due_date ASC',
 };
 
-// Base SELECT that always joins assignee name for the frontend.
 const BASE_SELECT = `
   SELECT
-    t.id, t.user_id, t.assigned_to,
-    t.title, t.description, t.priority, t.status, t.due_date,
+    t.id, t.user_id, t.assigned_to, t.project_id,
+    t.title, t.description, t.completion_note, t.priority, t.status, t.due_date,
     t.created_at, t.updated_at,
-    u.name AS assigned_to_name
+    u.name AS assigned_to_name,
+    p.name AS project_name
   FROM tasks t
   LEFT JOIN users u ON u.id = t.assigned_to
+  LEFT JOIN projects p ON p.id = t.project_id
 `;
 
 const TaskModel = {
@@ -26,12 +27,13 @@ const TaskModel = {
 
   /**
    * findAll
-   * isAdmin=true  → returns every task (no ownership filter)
-   * isAdmin=false → returns only tasks assigned to the requesting employee
+   * isAdminOrManager=true  → returns all tasks matching filters
+   * isAdminOrManager=false → returns only tasks assigned to the employee
    */
-  async findAll(userId, isAdmin, { search, status, priority, sort, page = 1, limit = 10 } = {}) {
-    const clauses = isAdmin ? [] : ['t.assigned_to = ?'];
-    const params = isAdmin ? [] : [userId];
+  async findAll(userId, role, { search, status, priority, sort, page = 1, limit = 10, projectId } = {}) {
+    const isManagerOrAdmin = role === 'admin' || role === 'task_manager';
+    const clauses = isManagerOrAdmin ? [] : ['t.assigned_to = ?'];
+    const params = isManagerOrAdmin ? [] : [userId];
 
     if (search) {
       clauses.push('t.title LIKE ?');
@@ -44,6 +46,10 @@ const TaskModel = {
     if (priority && ALLOWED_PRIORITY.includes(priority)) {
       clauses.push('t.priority = ?');
       params.push(priority);
+    }
+    if (projectId) {
+      clauses.push('t.project_id = ?');
+      params.push(projectId);
     }
 
     const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -75,41 +81,41 @@ const TaskModel = {
     };
   },
 
-  /**
-   * findById
-   * Admin can fetch any task; employee can only fetch tasks assigned to them.
-   */
-  async findById(id, userId, isAdmin) {
-    const where = isAdmin
+  async findById(id, userId, role) {
+    const isManagerOrAdmin = role === 'admin' || role === 'task_manager';
+    const where = isManagerOrAdmin
       ? 'WHERE t.id = ?'
       : 'WHERE t.id = ? AND t.assigned_to = ?';
-    const params = isAdmin ? [id] : [id, userId];
+    const params = isManagerOrAdmin ? [id] : [id, userId];
 
     const [rows] = await pool.query(`${BASE_SELECT} ${where} LIMIT 1`, params);
     return rows[0] || null;
   },
 
-  /**
-   * create — admin only; assigned_to is required to assign the task to an employee.
-   */
-  async create(userId, { title, description, priority, status, due_date, assigned_to }) {
+  async create(userId, { title, description, priority, status, due_date, assigned_to, project_id, completion_note }) {
     const [result] = await pool.query(
-      `INSERT INTO tasks (user_id, assigned_to, title, description, priority, status, due_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [userId, assigned_to || null, title, description || null, priority, status, due_date]
+      `INSERT INTO tasks (user_id, assigned_to, project_id, title, description, completion_note, priority, status, due_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        assigned_to || null,
+        project_id || null,
+        title,
+        description || null,
+        completion_note || null,
+        priority,
+        status,
+        due_date,
+      ]
     );
-    return this.findById(result.insertId, userId, true);
+    return this.findById(result.insertId, userId, 'admin');
   },
 
-  /**
-   * update
-   * Admin: can update all fields including assigned_to
-   * Employee: can only update status on their assigned tasks
-   */
-  async update(id, userId, isAdmin, fields) {
-    const allowedFields = isAdmin
-      ? ['title', 'description', 'priority', 'status', 'due_date', 'assigned_to']
-      : ['status'];
+  async update(id, userId, role, fields) {
+    const isManagerOrAdmin = role === 'admin' || role === 'task_manager';
+    const allowedFields = isManagerOrAdmin
+      ? ['title', 'description', 'priority', 'status', 'due_date', 'assigned_to', 'project_id', 'completion_note']
+      : ['status', 'completion_note'];
 
     const setClauses = [];
     const params = [];
@@ -122,15 +128,15 @@ const TaskModel = {
     });
 
     if (setClauses.length === 0) {
-      return this.findById(id, userId, isAdmin);
+      return this.findById(id, userId, role);
     }
 
-    const whereClause = isAdmin
+    const whereClause = isManagerOrAdmin
       ? 'WHERE id = ?'
       : 'WHERE id = ? AND assigned_to = ?';
 
     params.push(id);
-    if (!isAdmin) params.push(userId);
+    if (!isManagerOrAdmin) params.push(userId);
 
     const [result] = await pool.query(
       `UPDATE tasks SET ${setClauses.join(', ')} ${whereClause}`,
@@ -138,21 +144,15 @@ const TaskModel = {
     );
 
     if (result.affectedRows === 0) return null;
-    return this.findById(id, userId, isAdmin);
+    return this.findById(id, userId, role);
   },
 
-  /**
-   * remove — admin only (enforced at the route level)
-   */
   async remove(id) {
     const [result] = await pool.query('DELETE FROM tasks WHERE id = ?', [id]);
     return result.affectedRows > 0;
   },
 
-  /**
-   * bulkUpdateStatus — admin only
-   */
-  async bulkUpdateStatus(ids, userId, status) {
+  async bulkUpdateStatus(ids, status) {
     if (!ids.length) return 0;
     const placeholders = ids.map(() => '?').join(', ');
     const [result] = await pool.query(
@@ -162,10 +162,7 @@ const TaskModel = {
     return result.affectedRows;
   },
 
-  /**
-   * bulkRemove — admin only
-   */
-  async bulkRemove(ids, userId) {
+  async bulkRemove(ids) {
     if (!ids.length) return 0;
     const placeholders = ids.map(() => '?').join(', ');
     const [result] = await pool.query(
@@ -175,14 +172,10 @@ const TaskModel = {
     return result.affectedRows;
   },
 
-  /**
-   * getStats
-   * Admin: stats across ALL tasks
-   * Employee: stats for tasks assigned to them only
-   */
-  async getStats(userId, isAdmin) {
-    const where = isAdmin ? '' : 'WHERE assigned_to = ?';
-    const params = isAdmin ? [] : [userId];
+  async getStats(userId, role) {
+    const isManagerOrAdmin = role === 'admin' || role === 'task_manager';
+    const where = isManagerOrAdmin ? '' : 'WHERE assigned_to = ?';
+    const params = isManagerOrAdmin ? [] : [userId];
 
     const [rows] = await pool.query(
       `SELECT

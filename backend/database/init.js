@@ -46,9 +46,22 @@ async function init() {
       name VARCHAR(150) NOT NULL,
       email VARCHAR(150) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
-      role ENUM('admin','employee') NOT NULL DEFAULT 'employee',
+      role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+  `);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      status ENUM('Active', 'Completed', 'On Hold') NOT NULL DEFAULT 'Active',
+      created_by INT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_projects_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8
   `);
 
@@ -57,8 +70,10 @@ async function init() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       assigned_to INT NULL,
+      project_id INT NULL,
       title VARCHAR(255) NOT NULL,
       description TEXT,
+      completion_note TEXT,
       priority ENUM('Low','Medium','High') NOT NULL DEFAULT 'Medium',
       status ENUM('Pending','In Progress','Completed') NOT NULL DEFAULT 'Pending',
       due_date DATE NOT NULL,
@@ -66,8 +81,10 @@ async function init() {
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_tasks_user_id(user_id),
       INDEX idx_tasks_assigned_to(assigned_to),
+      INDEX idx_tasks_project_id(project_id),
       CONSTRAINT fk_tasks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_tasks_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
+      CONSTRAINT fk_tasks_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+      CONSTRAINT fk_tasks_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8
   `);
 
@@ -90,7 +107,7 @@ async function init() {
 
   await runMigration(
     connection,
-    `ALTER TABLE users ADD COLUMN role ENUM('admin','employee') NOT NULL DEFAULT 'employee'`,
+    `ALTER TABLE users MODIFY COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'`,
     'users.role column'
   );
 
@@ -100,22 +117,17 @@ async function init() {
     'tasks.assigned_to column'
   );
 
-  // Add FK for assigned_to if not present (ignore error if already exists)
-  try {
-    await connection.query(
-      `ALTER TABLE tasks ADD CONSTRAINT fk_tasks_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL`
-    );
-    console.log('  ✓ tasks.assigned_to FK');
-  } catch (err) {
-    if (err.code === 'ER_DUP_KEY' || err.errno === 1061 || err.errno === 1060 || err.code === 'ER_FK_DUP_NAME') {
-      console.log('  – tasks.assigned_to FK (already exists, skipped)');
-    } else if (err.errno === 1826) {
-      console.log('  – tasks.assigned_to FK (already exists, skipped)');
-    } else {
-      // Non-fatal — column exists but FK may not be supported on free tier
-      console.log(`  ! tasks.assigned_to FK skipped: ${err.message}`);
-    }
-  }
+  await runMigration(
+    connection,
+    `ALTER TABLE tasks ADD COLUMN project_id INT NULL AFTER assigned_to`,
+    'tasks.project_id column'
+  );
+
+  await runMigration(
+    connection,
+    `ALTER TABLE tasks ADD COLUMN completion_note TEXT NULL AFTER description`,
+    'tasks.completion_note column'
+  );
 
   console.log('\nMigrations complete.\n');
 
@@ -142,33 +154,6 @@ async function init() {
     );
     userId = result.insertId;
     console.log(`Admin user created: ${email} / ${password}`);
-  }
-
-  // ── Seed sample tasks ────────────────────────────────────────────────────────
-  const [taskCount] = await connection.query(
-    'SELECT COUNT(*) AS total FROM tasks WHERE user_id = ?',
-    [userId]
-  );
-
-  if (taskCount[0].total === 0) {
-    const sampleTasks = [
-      ['Set up project repository', 'Initialize Git repo and push base structure.', 'High', 'Completed', -5],
-      ['Design database schema', 'Model users and tasks tables.', 'High', 'Completed', -3],
-      ['Build authentication API', 'Implement JWT login and route protection.', 'Medium', 'In Progress', 2],
-      ['Implement task filtering', 'Add status and priority filters.', 'Medium', 'Pending', 5],
-      ['Fix overdue task styling', 'Overdue tasks should stand out visually.', 'Low', 'Pending', -1],
-    ];
-
-    for (const [title, description, priority, status, dayOffset] of sampleTasks) {
-      await connection.query(
-        `INSERT INTO tasks (user_id, title, description, priority, status, due_date)
-         VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY))`,
-        [userId, title, description, priority, status, dayOffset]
-      );
-    }
-    console.log('Sample tasks inserted.');
-  } else {
-    console.log('Tasks already exist, skipping sample insert.');
   }
 
   await connection.end();

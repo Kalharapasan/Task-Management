@@ -1,6 +1,10 @@
 const { pool } = require('../config/db');
 
+const ALLOWED_ROLES = ['admin', 'task_manager', 'employee'];
+
 const UserModel = {
+  ALLOWED_ROLES,
+
   async findByEmail(email) {
     const [rows] = await pool.query('SELECT * FROM users WHERE email = ? LIMIT 1', [email]);
     return rows[0] || null;
@@ -22,9 +26,27 @@ const UserModel = {
     return this.findById(result.insertId);
   },
 
+  // Admin: View all registered users
+  async findAllUsers() {
+    const [rows] = await pool.query(
+      'SELECT id, name, email, role, created_at FROM users ORDER BY name ASC'
+    );
+    return rows;
+  },
+
+  // Admin: Update a user's role
+  async updateRole(id, role) {
+    if (!ALLOWED_ROLES.includes(role)) {
+      throw new Error(`Invalid role. Must be one of: ${ALLOWED_ROLES.join(', ')}`);
+    }
+    await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    return this.findById(id);
+  },
+
+  // Admin & Task Manager: Get assignable users (employees and task managers)
   async findEmployees() {
     const [rows] = await pool.query(
-      "SELECT id, name, email FROM users WHERE role = 'employee' ORDER BY name ASC"
+      "SELECT id, name, email, role FROM users WHERE role IN ('employee', 'task_manager') ORDER BY name ASC"
     );
     return rows;
   },

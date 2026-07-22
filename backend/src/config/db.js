@@ -21,8 +21,13 @@ async function runAutoMigration(connection, sql) {
   try {
     await connection.query(sql);
   } catch (err) {
-    if (err.code === 'ER_DUP_FIELDNAME' || err.errno === 1060) {
-      // Column already exists, safe to ignore
+    if (
+      err.code === 'ER_DUP_FIELDNAME' ||
+      err.errno === 1060 ||
+      err.code === 'ER_DUP_KEYNAME' ||
+      err.errno === 1061
+    ) {
+      // Column/Index already exists, safe to ignore
     } else {
       console.warn('[Auto-Migration]', err.message);
     }
@@ -34,14 +39,39 @@ async function testConnection() {
     const connection = await pool.getConnection();
     console.log('MySQL connected successfully');
 
-    // Automatically ensure role and assigned_to columns exist on boot
+    // 1. Ensure user role ENUM supports 'admin', 'task_manager', 'employee'
     await runAutoMigration(
       connection,
-      "ALTER TABLE users ADD COLUMN role ENUM('admin','employee') NOT NULL DEFAULT 'employee'"
+      "ALTER TABLE users MODIFY COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'"
     );
+
+    // 2. Ensure projects table exists
+    await runAutoMigration(
+      connection,
+      `CREATE TABLE IF NOT EXISTS projects (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        status ENUM('Active', 'Completed', 'On Hold') NOT NULL DEFAULT 'Active',
+        created_by INT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_projects_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8`
+    );
+
+    // 3. Ensure tasks has assigned_to, project_id, and completion_note
     await runAutoMigration(
       connection,
       "ALTER TABLE tasks ADD COLUMN assigned_to INT NULL AFTER user_id"
+    );
+    await runAutoMigration(
+      connection,
+      "ALTER TABLE tasks ADD COLUMN project_id INT NULL AFTER assigned_to"
+    );
+    await runAutoMigration(
+      connection,
+      "ALTER TABLE tasks ADD COLUMN completion_note TEXT NULL AFTER description"
     );
 
     // Ensure default admin user has admin role
