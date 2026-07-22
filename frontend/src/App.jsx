@@ -6,7 +6,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
+import Users from './pages/Users';
 
 function LoginRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -20,6 +22,13 @@ function RegisterRoute() {
   if (isLoading) return null;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return <Register />;
+}
+
+function AdminRoute({ children }) {
+  const { isAdmin, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
 export default function App() {
@@ -39,10 +48,28 @@ export default function App() {
               }
             />
             <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Projects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tasks"
               element={
                 <ProtectedRoute>
                   <Tasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <Users />
+                  </AdminRoute>
                 </ProtectedRoute>
               }
             />

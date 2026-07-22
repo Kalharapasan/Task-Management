@@ -1,50 +1,56 @@
 import React, { useEffect, useState } from 'react';
-import { ListChecks, Clock, Loader2, CheckCircle2, AlertOctagon } from 'lucide-react';
+import { ListChecks, Clock, Loader2, CheckCircle2, AlertOctagon, FolderKanban, Shield, Briefcase, User } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import Layout from '../components/Layout';
 import StatCard from '../components/StatCard';
-import { taskApi } from '../api/client';
+import { taskApi, projectApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 const STATUS_COLORS = {
-  Pending: '#94a3b8', // slate-400
-  'In Progress': '#14b8a6', // teal-500
-  Completed: '#22c55e', // green-500 (primary)
+  Pending: '#94a3b8',
+  'In Progress': '#14b8a6',
+  Completed: '#22c55e',
 };
 
 const PRIORITY_COLORS = {
-  Low: '#94a3b8', // slate-400
-  Medium: '#f59e0b', // amber-500
-  High: '#e11d48', // rose-600
+  Low: '#94a3b8',
+  Medium: '#f59e0b',
+  High: '#e11d48',
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isAdmin, isTaskManager, canManageProjects } = useAuth();
   const { showToast } = useToast();
   const [stats, setStats] = useState(null);
+  const [projectReport, setProjectReport] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchStats() {
+    async function fetchDashboardData() {
       try {
-        const response = await taskApi.getStats();
-        if (isMounted) setStats(response.data.data.stats);
+        const taskStatsRes = await taskApi.getStats();
+        if (isMounted) setStats(taskStatsRes.data.data.stats);
+
+        if (canManageProjects) {
+          const reportRes = await projectApi.getReport();
+          if (isMounted) setProjectReport(reportRes.data.data.report);
+        }
       } catch (error) {
-        showToast(error.response?.data?.message || 'Failed to load dashboard stats', 'error');
+        showToast(error.response?.data?.message || 'Failed to load dashboard data', 'error');
       } finally {
         if (isMounted) setIsLoading(false);
       }
     }
 
-    fetchStats();
+    fetchDashboardData();
     return () => {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canManageProjects]);
 
   const cards = [
     { label: 'Total Tasks', value: stats?.total ?? 0, icon: ListChecks, color: 'slate' },
@@ -74,18 +80,55 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Welcome back, {user?.name}
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">Here&apos;s an overview of your tasks.</p>
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            Welcome back, {user?.name}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">Here is your project & task status report overview.</p>
+        </div>
+
+        <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+          {isAdmin && <><Shield size={13} className="text-rose-600" /> Admin</>}
+          {isTaskManager && <><Briefcase size={13} className="text-amber-600" /> Task Manager</>}
+          {!isAdmin && !isTaskManager && <><User size={13} className="text-slate-600" /> Employee</>}
+        </div>
       </div>
 
+      {/* Task Counter Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {cards.map((card) => (
           <StatCard key={card.label} {...card} isLoading={isLoading} />
         ))}
       </div>
+
+      {/* Project Status Summary (Admin & Task Manager) */}
+      {canManageProjects && projectReport && (
+        <div className="card p-5 mb-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-md">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderKanban size={20} className="text-primary-400" />
+            <h2 className="text-base font-bold">Project Status Report Overview</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-slate-300">Total Projects</p>
+              <p className="text-2xl font-black mt-1 text-white">{projectReport.total}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-emerald-300">Active</p>
+              <p className="text-2xl font-black mt-1 text-emerald-400">{projectReport.active}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-primary-300">Completed</p>
+              <p className="text-2xl font-black mt-1 text-primary-400">{projectReport.completed}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-amber-300">On Hold</p>
+              <p className="text-2xl font-black mt-1 text-amber-400">{projectReport.onHold}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isLoading && hasTasks && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
