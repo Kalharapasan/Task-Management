@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CheckSquare, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -9,7 +9,7 @@ export default function Login() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('admin@test.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +44,7 @@ export default function Login() {
             <CheckSquare size={24} />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Task Manager</h1>
-          <p className="text-sm text-slate-500 mt-1">Sign in to manage your daily tasks</p>
+          <p className="text-sm text-slate-500 mt-1">Sign in to manage your tasks</p>
         </div>
 
         <div className="card p-6">
@@ -66,7 +66,7 @@ export default function Login() {
                 className="input-field"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@test.com"
+                placeholder="you@example.com"
               />
             </div>
 
@@ -82,7 +82,7 @@ export default function Login() {
                   className="input-field pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="123456"
+                  placeholder="Your password"
                 />
                 <button
                   type="button"
@@ -101,8 +101,15 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-xs text-slate-400 text-center mt-4">
-          Default credentials: admin@test.com / 123456
+        <p className="text-sm text-slate-500 text-center mt-4">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="text-primary-600 font-medium hover:underline">
+            Sign up
+          </Link>
+        </p>
+
+        <p className="text-xs text-slate-400 text-center mt-3">
+          Admin: admin@test.com / 123456
         </p>
       </div>
     </div>
