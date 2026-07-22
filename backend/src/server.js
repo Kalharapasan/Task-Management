@@ -1,1 +1,0 @@
-d:\Web Project\Task Management\project\backend\.gitignore
