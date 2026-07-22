@@ -4,12 +4,12 @@ require('dotenv').config();
 
 const dbName = process.env.DB_NAME || 'sql12833613';
 
+// Create pool without hardcoded initial database parameter so connection can create database if missing
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: dbName,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -145,7 +145,8 @@ async function testConnection() {
     const connection = await pool.getConnection();
     console.log('MySQL connected successfully');
 
-    // Force selection of target database
+    // 0. Create database if it does not exist yet
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
     await connection.query(`USE \`${dbName}\``);
 
     // 1. Ensure users table exists

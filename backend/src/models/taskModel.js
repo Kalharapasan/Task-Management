@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 
+const DB = `\`${process.env.DB_NAME || 'sql12833613'}\``;
 const ALLOWED_STATUS = ['Pending', 'In Progress', 'Completed'];
 const ALLOWED_PRIORITY = ['Low', 'Medium', 'High'];
 
@@ -16,9 +17,9 @@ const BASE_SELECT = `
     t.created_at, t.updated_at,
     u.name AS assigned_to_name,
     p.name AS project_name
-  FROM tasks t
-  LEFT JOIN users u ON u.id = t.assigned_to
-  LEFT JOIN projects p ON p.id = t.project_id
+  FROM ${DB}.\`tasks\` t
+  LEFT JOIN ${DB}.\`users\` u ON u.id = t.assigned_to
+  LEFT JOIN ${DB}.\`projects\` p ON p.id = t.project_id
 `;
 
 const TaskModel = {
@@ -28,8 +29,8 @@ const TaskModel = {
   async getCommits(taskId) {
     const [rows] = await pool.query(
       `SELECT c.id, c.status, c.note, c.created_at, u.name AS user_name, u.role AS user_role
-       FROM task_commits c
-       LEFT JOIN users u ON u.id = c.user_id
+       FROM ${DB}.\`task_commits\` c
+       LEFT JOIN ${DB}.\`users\` u ON u.id = c.user_id
        WHERE c.task_id = ?
        ORDER BY c.created_at DESC`,
       [taskId]
@@ -40,7 +41,7 @@ const TaskModel = {
   async addCommit(taskId, userId, status, note) {
     if (!status && !note) return;
     await pool.query(
-      `INSERT INTO task_commits (task_id, user_id, status, note) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO ${DB}.\`task_commits\` (task_id, user_id, status, note) VALUES (?, ?, ?, ?)`,
       [taskId, userId, status, note || null]
     );
   },
@@ -75,7 +76,7 @@ const TaskModel = {
     const offset = (safePage - 1) * safeLimit;
 
     const [countRows] = await pool.query(
-      `SELECT COUNT(*) AS total FROM tasks t ${whereSql}`,
+      `SELECT COUNT(*) AS total FROM ${DB}.\`tasks\` t ${whereSql}`,
       params
     );
     const total = Number(countRows[0].total) || 0;
@@ -112,7 +113,7 @@ const TaskModel = {
 
   async create(userId, { title, description, priority, status, due_date, assigned_to, project_id, completion_note }) {
     const [result] = await pool.query(
-      `INSERT INTO tasks (user_id, assigned_to, project_id, title, description, completion_note, priority, status, due_date)
+      `INSERT INTO ${DB}.\`tasks\` (user_id, assigned_to, project_id, title, description, completion_note, priority, status, due_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
@@ -163,13 +164,12 @@ const TaskModel = {
     if (!isManagerOrAdmin) params.push(userId);
 
     const [result] = await pool.query(
-      `UPDATE tasks SET ${setClauses.join(', ')} ${whereClause}`,
+      `UPDATE ${DB}.\`tasks\` SET ${setClauses.join(', ')} ${whereClause}`,
       params
     );
 
     if (result.affectedRows === 0) return null;
 
-    // Record commit activity log if status or completion_note was updated
     if (fields.status || fields.completion_note) {
       await this.addCommit(
         id,
@@ -183,7 +183,7 @@ const TaskModel = {
   },
 
   async remove(id) {
-    const [result] = await pool.query('DELETE FROM tasks WHERE id = ?', [id]);
+    const [result] = await pool.query(`DELETE FROM ${DB}.\`tasks\` WHERE id = ?`, [id]);
     return result.affectedRows > 0;
   },
 
@@ -191,7 +191,7 @@ const TaskModel = {
     if (!ids.length) return 0;
     const placeholders = ids.map(() => '?').join(', ');
     const [result] = await pool.query(
-      `UPDATE tasks SET status = ? WHERE id IN (${placeholders})`,
+      `UPDATE ${DB}.\`tasks\` SET status = ? WHERE id IN (${placeholders})`,
       [status, ...ids]
     );
     return result.affectedRows;
@@ -201,7 +201,7 @@ const TaskModel = {
     if (!ids.length) return 0;
     const placeholders = ids.map(() => '?').join(', ');
     const [result] = await pool.query(
-      `DELETE FROM tasks WHERE id IN (${placeholders})`,
+      `DELETE FROM ${DB}.\`tasks\` WHERE id IN (${placeholders})`,
       [...ids]
     );
     return result.affectedRows;
@@ -222,7 +222,7 @@ const TaskModel = {
         SUM(CASE WHEN priority = 'Low' THEN 1 ELSE 0 END) AS lowPriority,
         SUM(CASE WHEN priority = 'Medium' THEN 1 ELSE 0 END) AS mediumPriority,
         SUM(CASE WHEN priority = 'High' THEN 1 ELSE 0 END) AS highPriority
-      FROM tasks ${where}`,
+      FROM ${DB}.\`tasks\` ${where}`,
       params
     );
 

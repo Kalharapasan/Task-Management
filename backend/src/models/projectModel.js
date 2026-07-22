@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 
+const DB = `\`${process.env.DB_NAME || 'sql12833613'}\``;
 const ALLOWED_PROJECT_STATUS = ['Active', 'Completed', 'On Hold'];
 
 const ProjectModel = {
@@ -8,21 +9,20 @@ const ProjectModel = {
   async findAll(userId, role) {
     const isEmployee = role === 'employee';
 
-    // Subquery tasks count grouped by project_id for MySQL 8.0 ONLY_FULL_GROUP_BY compliance
     const sql = `
       SELECT
         p.id, p.name, p.description, p.status, p.created_by, p.created_at, p.updated_at,
         u.name AS creator_name,
         COALESCE(t.total_tasks, 0) AS total_tasks,
         COALESCE(t.completed_tasks, 0) AS completed_tasks
-      FROM projects p
-      LEFT JOIN users u ON u.id = p.created_by
+      FROM ${DB}.\`projects\` p
+      LEFT JOIN ${DB}.\`users\` u ON u.id = p.created_by
       LEFT JOIN (
         SELECT
           project_id,
           COUNT(*) AS total_tasks,
           SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed_tasks
-        FROM tasks
+        FROM ${DB}.\`tasks\`
         ${isEmployee ? 'WHERE assigned_to = ?' : ''}
         GROUP BY project_id
       ) t ON t.project_id = p.id
@@ -48,8 +48,8 @@ const ProjectModel = {
     const [rows] = await pool.query(
       `SELECT p.id, p.name, p.description, p.status, p.created_by, p.created_at, p.updated_at,
               u.name AS creator_name
-       FROM projects p
-       LEFT JOIN users u ON u.id = p.created_by
+       FROM ${DB}.\`projects\` p
+       LEFT JOIN ${DB}.\`users\` u ON u.id = p.created_by
        WHERE p.id = ? LIMIT 1`,
       [id]
     );
@@ -58,19 +58,18 @@ const ProjectModel = {
     const [tasks] = await pool.query(
       `SELECT t.id, t.title, t.description, t.completion_note, t.priority, t.status, t.due_date, t.assigned_to,
               u.name AS assigned_to_name
-       FROM tasks t
-       LEFT JOIN users u ON u.id = t.assigned_to
+       FROM ${DB}.\`tasks\` t
+       LEFT JOIN ${DB}.\`users\` u ON u.id = t.assigned_to
        WHERE t.project_id = ?
        ORDER BY t.due_date ASC`,
       [id]
     );
 
-    // Fetch commit activity logs for project tasks
     for (const t of tasks) {
       const [commits] = await pool.query(
         `SELECT c.id, c.status, c.note, c.created_at, u.name AS user_name, u.role AS user_role
-         FROM task_commits c
-         LEFT JOIN users u ON u.id = c.user_id
+         FROM ${DB}.\`task_commits\` c
+         LEFT JOIN ${DB}.\`users\` u ON u.id = c.user_id
          WHERE c.task_id = ?
          ORDER BY c.created_at DESC`,
         [t.id]
@@ -83,7 +82,7 @@ const ProjectModel = {
 
   async create(userId, { name, description, status = 'Active' }) {
     const [result] = await pool.query(
-      `INSERT INTO projects (name, description, status, created_by) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO ${DB}.\`projects\` (name, description, status, created_by) VALUES (?, ?, ?, ?)`,
       [name, description || null, status, userId]
     );
     return this.findById(result.insertId);
@@ -102,12 +101,12 @@ const ProjectModel = {
     if (fields.length === 0) return this.findById(id);
 
     params.push(id);
-    await pool.query(`UPDATE projects SET ${fields.join(', ')} WHERE id = ?`, params);
+    await pool.query(`UPDATE ${DB}.\`projects\` SET ${fields.join(', ')} WHERE id = ?`, params);
     return this.findById(id);
   },
 
   async remove(id) {
-    const [result] = await pool.query('DELETE FROM projects WHERE id = ?', [id]);
+    const [result] = await pool.query(`DELETE FROM ${DB}.\`projects\` WHERE id = ?`, [id]);
     return result.affectedRows > 0;
   },
 
@@ -118,7 +117,7 @@ const ProjectModel = {
         SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) AS active_projects,
         SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed_projects,
         SUM(CASE WHEN status = 'On Hold' THEN 1 ELSE 0 END) AS on_hold_projects
-      FROM projects
+      FROM ${DB}.\`projects\`
     `);
 
     const stats = rows[0];
