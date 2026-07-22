@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Pencil, Trash2, GripVertical } from 'lucide-react';
+import { Calendar, Pencil, Trash2, GripVertical, User, Folder, MessageSquare } from 'lucide-react';
 import { PriorityBadge } from './Badges';
 
 const COLUMNS = [
@@ -72,16 +72,43 @@ export default function KanbanBoard({ tasks, onStatusChange, onEdit, onDelete })
                   setDraggedId(null);
                   setDragOverColumn(null);
                 }}
-                className={`card p-3 cursor-grab active:cursor-grabbing transition ${
-                  draggedId === task.id ? 'opacity-40' : 'hover:shadow-md'
+                onClick={() => onEdit(task)}
+                className={`card p-3.5 cursor-pointer hover:shadow-md transition border border-slate-200 hover:border-primary-300 ${
+                  draggedId === task.id ? 'opacity-40' : ''
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  <GripVertical size={14} className="mt-0.5 text-slate-300 shrink-0" />
+                  <GripVertical size={14} className="mt-0.5 text-slate-300 shrink-0 cursor-grab" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 leading-snug">{task.title}</p>
-                    <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                      <PriorityBadge priority={task.priority} />
+                    <p className="text-sm font-bold text-slate-900 leading-snug">{task.title}</p>
+                    
+                    {task.project_name && (
+                      <p className="text-[11px] font-semibold text-primary-700 mt-1 flex items-center gap-1">
+                        <Folder size={11} /> {task.project_name}
+                      </p>
+                    )}
+
+                    {task.description && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+                    )}
+
+                    {task.completion_note && (
+                      <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-md p-2 mt-2 flex items-start gap-1">
+                        <MessageSquare size={12} className="mt-0.5 shrink-0 text-emerald-600" />
+                        <span><strong>Commit Note:</strong> {task.completion_note}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between flex-wrap gap-1.5 mt-3 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5">
+                        <PriorityBadge priority={task.priority} />
+                        {task.assigned_to_name && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                            <User size={10} /> {task.assigned_to_name}
+                          </span>
+                        )}
+                      </div>
+
                       <span
                         className={`inline-flex items-center gap-1 text-xs ${
                           isOverdue(task) ? 'text-rose-600 font-medium' : 'text-slate-500'
@@ -93,30 +120,40 @@ export default function KanbanBoard({ tasks, onStatusChange, onEdit, onDelete })
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-1 mt-2 -mb-1 -mr-1">
+
+                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={() => onEdit(task)}
-                    className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-primary-600"
-                    aria-label={`Edit ${task.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(task);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-slate-600 hover:bg-slate-100 hover:text-primary-600"
+                    aria-label={`Update ${task.title}`}
                   >
-                    <Pencil size={13} />
+                    <Pencil size={12} />
+                    <span>Update</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(task)}
-                    className="p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                    aria-label={`Delete ${task.title}`}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(task);
+                      }}
+                      className="p-1.5 rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      aria-label={`Delete ${task.title}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
 
             {tasksByStatus[col.status].length === 0 && (
               <p className="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-lg">
-                Drop a task here
+                No tasks in this column
               </p>
             )}
           </div>

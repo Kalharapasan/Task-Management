@@ -215,7 +215,7 @@ export default function Tasks() {
           <p className="text-sm text-slate-500 mt-1">
             {canManageTasks
               ? 'Create, assign to projects & employees, and track progress.'
-              : 'View assigned tasks, update status, and commit work progress notes.'}
+              : 'Click any task item to update status and attach work commit notes.'}
           </p>
         </div>
 
@@ -254,7 +254,6 @@ export default function Tasks() {
         <div className="flex-1">
           <TaskToolbar filters={filters} onChange={handleFilterChange} onClear={handleClearFilters} />
         </div>
-        {/* Project Filter */}
         <div className="card p-2 flex items-center gap-2 min-w-[200px]">
           <Folder size={16} className="text-slate-400 ml-2" />
           <select
@@ -339,10 +338,11 @@ export default function Tasks() {
                 {tasks.map((task) => (
                   <tr
                     key={task.id}
-                    className={`hover:bg-slate-50 ${canManageTasks && selectedIds.has(task.id) ? 'bg-primary-50/50' : ''}`}
+                    onClick={() => openEditForm(task)}
+                    className={`hover:bg-slate-50 cursor-pointer transition ${canManageTasks && selectedIds.has(task.id) ? 'bg-primary-50/50' : ''}`}
                   >
                     {canManageTasks && (
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="rounded border-slate-300 text-primary-600 focus-ring"
@@ -353,13 +353,13 @@ export default function Tasks() {
                       </td>
                     )}
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-900">{task.title}</p>
+                      <p className="font-semibold text-slate-900 hover:text-primary-600">{task.title}</p>
                       {task.description && (
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{task.description}</p>
                       )}
                       {task.completion_note && (
-                        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-1.5 mt-1.5 flex items-start gap-1">
-                          <MessageSquare size={12} className="mt-0.5 shrink-0" />
+                        <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded p-1.5 mt-1.5 flex items-start gap-1">
+                          <MessageSquare size={12} className="mt-0.5 shrink-0 text-emerald-600" />
                           <span><strong>Commit Note:</strong> {task.completion_note}</span>
                         </p>
                       )}
@@ -390,24 +390,24 @@ export default function Tasks() {
                         {isOverdue(task) && ' (Overdue)'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => openEditForm(task)}
-                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary-600 focus-ring"
-                          aria-label={canManageTasks ? `Edit ${task.title}` : `Update status of ${task.title}`}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg text-slate-600 hover:bg-slate-100 hover:text-primary-600 focus-ring"
                         >
-                          <Pencil size={16} />
+                          <Pencil size={14} />
+                          <span>Update</span>
                         </button>
                         {canManageTasks && (
                           <button
                             type="button"
                             onClick={() => setTaskToDelete(task)}
-                            className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 focus-ring"
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 focus-ring"
                             aria-label={`Delete ${task.title}`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         )}
                       </div>
@@ -421,33 +421,53 @@ export default function Tasks() {
           {/* Mobile view */}
           <div className="md:hidden space-y-3">
             {tasks.map((task) => (
-              <div key={task.id} className="card p-4">
+              <div
+                key={task.id}
+                onClick={() => openEditForm(task)}
+                className="card p-4 cursor-pointer hover:shadow-md transition"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-slate-900">{task.title}</p>
                     {task.project_name && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 mt-0.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-700 mt-0.5">
                         <Folder size={11} /> {task.project_name}
                       </span>
                     )}
                     {task.completion_note && (
-                      <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-1.5 mt-1.5 flex items-start gap-1">
-                        <MessageSquare size={12} className="mt-0.5 shrink-0" />
+                      <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded p-1.5 mt-1.5 flex items-start gap-1">
+                        <MessageSquare size={12} className="mt-0.5 shrink-0 text-emerald-600" />
                         <span><strong>Commit Note:</strong> {task.completion_note}</span>
                       </p>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(task)}
-                    className="p-2 rounded-lg text-slate-500 hover:bg-slate-100"
-                  >
-                    <Pencil size={16} />
-                  </button>
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(task)}
+                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-100"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    {canManageTasks && (
+                      <button
+                        type="button"
+                        onClick={() => setTaskToDelete(task)}
+                        className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center flex-wrap gap-2 mt-3">
+                <div className="flex items-center flex-wrap gap-2 mt-3 pt-2 border-t border-slate-100">
                   <PriorityBadge priority={task.priority} />
                   <StatusBadge status={task.status} />
+                  {task.assigned_to_name && (
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <User size={11} /> {task.assigned_to_name}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
