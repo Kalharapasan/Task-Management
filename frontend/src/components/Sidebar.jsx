@@ -1,15 +1,28 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListChecks, LogOut, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, ListChecks, LogOut, CheckSquare, Shield, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/tasks', label: 'Tasks', icon: ListChecks },
-];
-
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
+
+  const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/tasks', label: isAdmin ? 'All Tasks' : 'My Tasks', icon: ListChecks },
+  ];
+
+  const RoleBadge = () => (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+        isAdmin
+          ? 'bg-primary-100 text-primary-700'
+          : 'bg-slate-100 text-slate-600'
+      }`}
+    >
+      {isAdmin ? <Shield size={10} /> : <User size={10} />}
+      {isAdmin ? 'Admin' : 'Employee'}
+    </span>
+  );
 
   return (
     <>
@@ -43,13 +56,16 @@ export default function Sidebar() {
 
         <div className="border-t border-slate-200 p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shrink-0">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
+          </div>
+          <div className="mb-3">
+            <RoleBadge />
           </div>
           <button
             type="button"

@@ -20,7 +20,7 @@ async function seed() {
   let userId;
   if (existing.length > 0) {
     userId = existing[0].id;
-    await pool.query('UPDATE users SET name = ?, password = ? WHERE id = ?', [
+    await pool.query("UPDATE users SET name = ?, password = ?, role = 'admin' WHERE id = ?", [
       name,
       hashedPassword,
       userId,
@@ -28,7 +28,7 @@ async function seed() {
     console.log(`Existing user updated: ${email}`);
   } else {
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')",
       [name, email, hashedPassword]
     );
     userId = result.insertId;

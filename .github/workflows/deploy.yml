@@ -1,20 +1,4 @@
 name: Deploy to Vercel
-
-# Deploys the backend and frontend as two separate Vercel projects
-# whenever main is updated. Requires these repository secrets to be set
-# under Settings -> Secrets and variables -> Actions (see README.md
-# "CI/CD & Deployment" section for how to obtain each value):
-#
-#   VERCEL_TOKEN                 - personal/team API token from vercel.com/account/tokens
-#   VERCEL_ORG_ID                - shared by both projects
-#   VERCEL_PROJECT_ID_BACKEND    - Project ID of the backend Vercel project
-#   VERCEL_PROJECT_ID_FRONTEND   - Project ID of the frontend Vercel project
-#   VITE_API_BASE_URL            - e.g. https://your-backend.vercel.app/api
-#
-# Each job uses the standard `vercel pull` -> `vercel build` -> `vercel deploy
-# --prebuilt` flow recommended by Vercel for CI-driven deployments, so the
-# exact same build Vercel would produce locally is what gets shipped.
-
 on:
   push:
     branches: [main]

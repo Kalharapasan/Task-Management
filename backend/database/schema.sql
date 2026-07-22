@@ -1,6 +1,4 @@
--- Task Management System - MySQL schema
--- Run this file against your MySQL server to create the database structure.
--- Usage: mysql -u root -p < database/schema.sql
+
 
 CREATE DATABASE IF NOT EXISTS task_management
   CHARACTER SET utf8mb4
@@ -8,24 +6,22 @@ CREATE DATABASE IF NOT EXISTS task_management
 
 USE task_management;
 
--- ---------------------------------------------------------------
--- users
--- ---------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'employee') NOT NULL DEFAULT 'employee',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------
--- tasks
--- ---------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
+  assigned_to INT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
   priority ENUM('Low', 'Medium', 'High') NOT NULL DEFAULT 'Medium',
@@ -34,19 +30,15 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_tasks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tasks_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
   INDEX idx_tasks_user_id (user_id),
+  INDEX idx_tasks_assigned_to (assigned_to),
   INDEX idx_tasks_status (status),
   INDEX idx_tasks_priority (priority),
   INDEX idx_tasks_due_date (due_date)
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------
--- refresh_tokens
--- Backs refresh-token authentication: each row represents one active
--- refresh token (identified by its JWT "jti" claim) issued to a user,
--- so a token can be individually revoked/rotated on refresh or logout
--- without needing to invalidate every session.
--- ---------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -57,20 +49,11 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   INDEX idx_refresh_tokens_user_id (user_id)
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------
--- Seed default user required by the assessment brief.
--- Email:    admin@test.com
--- Password: 123456   (bcrypt hash below, 10 salt rounds)
--- Generated with: bcrypt.hashSync('123456', 10)
--- ---------------------------------------------------------------
-INSERT INTO users (name, email, password)
-VALUES ('Admin User', 'admin@test.com', '$2a$10$JWRgS69y2tHot17.oiVXl.ukKIvhRAhS2iKIUl2DqSN4BDTXccX7G')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
+INSERT INTO users (name, email, password, role)
+VALUES ('Admin User', 'admin@test.com', '$2a$10$JWRgS69y2tHot17.oiVXl.ukKIvhRAhS2iKIUl2DqSN4BDTXccX7G', 'admin')
+ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role);
 
--- ---------------------------------------------------------------
--- A handful of sample tasks so the dashboard/list isn't empty
--- on first login. Safe to delete.
--- ---------------------------------------------------------------
+
 INSERT INTO tasks (user_id, title, description, priority, status, due_date)
 SELECT id, 'Set up project repository', 'Initialize Git repo and push the base project structure.', 'High', 'Completed', CURDATE() - INTERVAL 5 DAY
 FROM users WHERE email = 'admin@test.com';
