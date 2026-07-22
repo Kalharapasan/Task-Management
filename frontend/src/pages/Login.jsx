@@ -108,9 +108,12 @@ export default function Login() {
           </Link>
         </p>
 
-        <p className="text-xs text-slate-400 text-center mt-3">
-          Admin: admin@test.com / 123456
-        </p>
+        <div className="text-xs text-slate-500 text-center mt-4 bg-slate-100 p-3 rounded-lg border border-slate-200">
+          <p className="font-semibold text-slate-700 mb-1">Demo Accounts (Password: 123456):</p>
+          <p>👑 <strong>Admin:</strong> admin@test.com</p>
+          <p>👔 <strong>Task Manager:</strong> manager@test.com</p>
+          <p>👤 <strong>Employee:</strong> alex@test.com</p>
+        </div>
       </div>
     </div>
   );

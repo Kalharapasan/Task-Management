@@ -5,16 +5,17 @@ function errorHandler(err, req, res, next) {
 
   if (!(err instanceof ApiError)) {
     statusCode = 500;
-    message = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+    message = err.message || 'Internal server error';
   }
 
-  if (process.env.NODE_ENV !== 'production' && !(err instanceof ApiError)) {
-    console.error(err);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('[API Error]', err);
   }
 
   res.status(statusCode || 500).json({
     success: false,
     message: message || 'Something went wrong',
+    error: process.env.NODE_ENV !== 'production' ? err.message : undefined,
   });
 }
 
