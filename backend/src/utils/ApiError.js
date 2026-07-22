@@ -1,8 +1,3 @@
-/**
- * Lightweight custom error class so controllers can throw errors with
- * an explicit HTTP status code, and the central error handler can
- * respond consistently without guessing.
- */
 class ApiError extends Error {
   constructor(statusCode, message) {
     super(message);

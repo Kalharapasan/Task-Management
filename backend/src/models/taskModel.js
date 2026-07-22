@@ -13,13 +13,7 @@ const TaskModel = {
   ALLOWED_STATUS,
   ALLOWED_PRIORITY,
 
-  /**
-   * Builds and runs a filtered/searched/sorted/paginated query for a
-   * single user's tasks. Every dynamic value is passed as a
-   * placeholder parameter (never string-concatenated) to avoid SQL
-   * injection. Returns both the page of rows and the total matching
-   * count (needed by the frontend to render page numbers).
-   */
+ 
   async findAll(userId, { search, status, priority, sort, page = 1, limit = 10 } = {}) {
     const clauses = ['user_id = ?'];
     const params = [userId];

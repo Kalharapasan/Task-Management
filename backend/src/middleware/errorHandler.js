@@ -1,11 +1,6 @@
 const ApiError = require('../utils/ApiError');
 
-/**
- * Central error handler. Every route either throws an ApiError (or lets
- * a native error bubble up through asyncHandler) and it lands here so
- * the client always gets a consistent { success, message } shape.
- */
-// eslint-disable-next-line no-unused-vars
+
 function errorHandler(err, req, res, next) {
   let { statusCode, message } = err;
 
