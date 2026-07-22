@@ -14,11 +14,13 @@ const TaskModel = {
   ALLOWED_PRIORITY,
 
   /**
-   * Builds and runs a filtered/searched/sorted query for a single
-   * user's tasks. Every dynamic value is passed as a placeholder
-   * parameter (never string-concatenated) to avoid SQL injection.
+   * Builds and runs a filtered/searched/sorted/paginated query for a
+   * single user's tasks. Every dynamic value is passed as a
+   * placeholder parameter (never string-concatenated) to avoid SQL
+   * injection. Returns both the page of rows and the total matching
+   * count (needed by the frontend to render page numbers).
    */
-  async findAll(userId, { search, status, priority, sort } = {}) {
+  async findAll(userId, { search, status, priority, sort, page = 1, limit = 10 } = {}) {
     const clauses = ['user_id = ?'];
     const params = [userId];
 
@@ -37,17 +39,38 @@ const TaskModel = {
       params.push(priority);
     }
 
+    const whereSql = clauses.join(' AND ');
     const orderBy = ALLOWED_SORTS[sort] || ALLOWED_SORTS.newest;
+
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+    const offset = (safePage - 1) * safeLimit;
+
+    const [countRows] = await pool.query(
+      `SELECT COUNT(*) AS total FROM tasks WHERE ${whereSql}`,
+      params
+    );
+    const total = Number(countRows[0].total) || 0;
 
     const sql = `
       SELECT id, user_id, title, description, priority, status, due_date, created_at, updated_at
       FROM tasks
-      WHERE ${clauses.join(' AND ')}
+      WHERE ${whereSql}
       ORDER BY ${orderBy}
+      LIMIT ? OFFSET ?
     `;
 
-    const [rows] = await pool.query(sql, params);
-    return rows;
+    const [rows] = await pool.query(sql, [...params, safeLimit, offset]);
+
+    return {
+      tasks: rows,
+      pagination: {
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+      },
+    };
   },
 
   async findById(id, userId) {

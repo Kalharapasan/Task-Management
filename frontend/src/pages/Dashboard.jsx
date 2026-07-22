@@ -36,7 +36,7 @@ export default function Dashboard() {
   const cards = [
     { label: 'Total Tasks', value: stats?.total ?? 0, icon: ListChecks, color: 'slate' },
     { label: 'Pending', value: stats?.pending ?? 0, icon: Clock, color: 'amber' },
-    { label: 'In Progress', value: stats?.inProgress ?? 0, icon: Loader2, color: 'sky' },
+    { label: 'In Progress', value: stats?.inProgress ?? 0, icon: Loader2, color: 'teal' },
     { label: 'Completed', value: stats?.completed ?? 0, icon: CheckCircle2, color: 'emerald' },
     { label: 'Overdue', value: stats?.overdue ?? 0, icon: AlertOctagon, color: 'rose' },
   ];

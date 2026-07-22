@@ -1,9 +1,13 @@
 const ApiError = require('../utils/ApiError');
-const { verifyToken } = require('../utils/jwt');
+const { verifyAccessToken } = require('../utils/jwt');
 
-
+/**
+ * Protects routes by requiring a valid "Bearer <token>" Authorization
+ * header. On success, attaches the decoded payload to req.user so
+ * downstream controllers know which user is making the request.
+ */
 function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization || '';
   const [scheme, token] = authHeader.split(' ');
 
   if (scheme !== 'Bearer' || !token) {
@@ -11,7 +15,7 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
     req.user = decoded;
     return next();
   } catch (error) {

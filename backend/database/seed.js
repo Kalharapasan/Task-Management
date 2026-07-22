@@ -1,3 +1,10 @@
+/**
+ * Optional Node-based seeder. schema.sql already seeds the default
+ * user and sample tasks, so this script is mainly useful if you want
+ * to reset the demo data without re-running the full schema file.
+ *
+ * Usage: npm run seed
+ */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/config/db');

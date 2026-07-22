@@ -2,15 +2,28 @@ const TaskModel = require('../models/taskModel');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
+/**
+ * GET /api/tasks
+ * Supports optional query params: search, status, priority, sort.
+ * Multiple filters can be combined, e.g.
+ * /api/tasks?status=Pending&priority=High&search=report&sort=due_date
+ */
 const getTasks = asyncHandler(async (req, res) => {
-  const { search, status, priority, sort } = req.query;
+  const { search, status, priority, sort, page, limit } = req.query;
 
-  const tasks = await TaskModel.findAll(req.user.id, { search, status, priority, sort });
+  const { tasks, pagination } = await TaskModel.findAll(req.user.id, {
+    search,
+    status,
+    priority,
+    sort,
+    page,
+    limit,
+  });
 
   res.status(200).json({
     success: true,
     count: tasks.length,
-    data: { tasks },
+    data: { tasks, pagination },
   });
 });
 

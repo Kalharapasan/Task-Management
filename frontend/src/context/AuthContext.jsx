@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authApi } from '../api/client';
+import { authApi, setAccessToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -7,24 +7,37 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On first load, rehydrate auth state from localStorage so a page
-  // refresh doesn't kick the user back to the login screen.
+  // On first load there's no access token in memory yet (it's never
+  // persisted to storage). Silently attempt a refresh using the
+  // httpOnly refresh-token cookie; if it succeeds, the user stays
+  // logged in across a page reload without ever exposing a long-lived
+  // token to client-side JS.
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+    let isMounted = true;
 
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+    async function rehydrate() {
+      try {
+        const response = await authApi.refresh();
+        setAccessToken(response.data.data.accessToken);
+        if (isMounted) setUser(response.data.data.user);
+      } catch {
+        setAccessToken(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+
+    rehydrate();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = useCallback(async (email, password) => {
     const response = await authApi.login(email, password);
-    const { token, user: loggedInUser } = response.data.data;
+    const { accessToken, user: loggedInUser } = response.data.data;
 
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
+    setAccessToken(accessToken);
     setUser(loggedInUser);
 
     return loggedInUser;
@@ -36,8 +49,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Even if the network call fails, still clear local auth state.
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      setAccessToken(null);
       setUser(null);
     }
   }, []);

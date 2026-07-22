@@ -1,3 +1,7 @@
+-- Task Management System - MySQL schema
+-- Run this file against your MySQL server to create the database structure.
+-- Usage: mysql -u root -p < database/schema.sql
+
 CREATE DATABASE IF NOT EXISTS task_management
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -34,6 +38,23 @@ CREATE TABLE IF NOT EXISTS tasks (
   INDEX idx_tasks_status (status),
   INDEX idx_tasks_priority (priority),
   INDEX idx_tasks_due_date (due_date)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------
+-- refresh_tokens
+-- Backs refresh-token authentication: each row represents one active
+-- refresh token (identified by its JWT "jti" claim) issued to a user,
+-- so a token can be individually revoked/rotated on refresh or logout
+-- without needing to invalidate every session.
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  jti VARCHAR(36) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_refresh_tokens_user_id (user_id)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------

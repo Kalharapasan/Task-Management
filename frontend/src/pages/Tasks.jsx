@@ -4,9 +4,12 @@ import Layout from '../components/Layout';
 import TaskToolbar from '../components/TaskToolbar';
 import TaskFormModal from '../components/TaskFormModal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Pagination from '../components/Pagination';
 import { StatusBadge, PriorityBadge } from '../components/Badges';
 import { taskApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
+
+const PAGE_SIZE = 8;
 
 function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -30,6 +33,8 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({ search: '', status: '', priority: '', sort: 'newest' });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -41,7 +46,7 @@ export default function Tasks() {
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = {};
+      const params = { page, limit: PAGE_SIZE };
       if (filters.search) params.search = filters.search;
       if (filters.status) params.status = filters.status;
       if (filters.priority) params.priority = filters.priority;
@@ -49,13 +54,14 @@ export default function Tasks() {
 
       const response = await taskApi.getAll(params);
       setTasks(response.data.data.tasks);
+      setPagination(response.data.data.pagination);
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to load tasks', 'error');
     } finally {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, page]);
 
   // Debounce the search box so we don't fire a request on every keystroke;
   // other filters (status/priority/sort) re-fetch immediately.
@@ -63,10 +69,18 @@ export default function Tasks() {
     const handle = setTimeout(fetchTasks, filters.search ? 350 : 0);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, page]);
 
-  const handleFilterChange = (patch) => setFilters((prev) => ({ ...prev, ...patch }));
-  const handleClearFilters = () => setFilters({ search: '', status: '', priority: '', sort: 'newest' });
+  // Any filter change should jump back to page 1, otherwise you can land
+  // on an out-of-range page with no results.
+  const handleFilterChange = (patch) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
+  const handleClearFilters = () => {
+    setFilters({ search: '', status: '', priority: '', sort: 'newest' });
+    setPage(1);
+  };
 
   const openCreateForm = () => {
     setEditingTask(null);
@@ -269,6 +283,14 @@ export default function Tasks() {
               </div>
             ))}
           </div>
+
+          <Pagination
+            page={pagination.page || page}
+            totalPages={pagination.totalPages || 1}
+            total={pagination.total || 0}
+            limit={PAGE_SIZE}
+            onPageChange={setPage}
+          />
         </>
       )}
 
