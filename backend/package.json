@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "init": "node database/init.js",
     "seed": "node database/seed.js",
     "test": "jest --runInBand"
   },

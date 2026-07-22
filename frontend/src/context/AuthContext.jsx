@@ -7,29 +7,34 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On first load there's no access token in memory yet (it's never
-  // persisted to storage). Silently attempt a refresh using the
-  // httpOnly refresh-token cookie; if it succeeds, the user stays
-  // logged in across a page reload without ever exposing a long-lived
-  // token to client-side JS.
+
   useEffect(() => {
+    const controller = new AbortController();
     let isMounted = true;
 
     async function rehydrate() {
       try {
-        const response = await authApi.refresh();
+        const response = await authApi.refresh({ signal: controller.signal });
         setAccessToken(response.data.data.accessToken);
         if (isMounted) setUser(response.data.data.user);
-      } catch {
+      } catch (err) {
+        // Aborted by StrictMode cleanup — not a real error, ignore silently.
+        if (err?.code === 'ERR_CANCELED' || controller.signal.aborted) return;
+
+        // A 401 means no active session cookie — expected on first visit / after logout.
+        if (err?.response?.status !== 401) {
+          console.error('[AuthContext] Session rehydration failed:', err?.message ?? err);
+        }
         setAccessToken(null);
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted && !controller.signal.aborted) setIsLoading(false);
       }
     }
 
     rehydrate();
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, []);
 

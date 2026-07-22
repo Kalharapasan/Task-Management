@@ -73,7 +73,7 @@ apiClient.interceptors.response.use(
 
 export const authApi = {
   login: (email, password) => apiClient.post('/auth/login', { email, password }),
-  refresh: () => apiClient.post('/auth/refresh'),
+  refresh: (config) => apiClient.post('/auth/refresh', undefined, config),
   logout: () => apiClient.post('/auth/logout'),
   me: () => apiClient.get('/auth/me'),
 };
