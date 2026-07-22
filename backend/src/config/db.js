@@ -2,12 +2,14 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
+const dbName = process.env.DB_NAME || 'sql12833613';
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: dbName,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -38,7 +40,7 @@ async function runSql(connection, sql, label) {
 }
 
 async function autoSeedDemoData(connection) {
-  const [uRows] = await connection.query('SELECT COUNT(*) AS total FROM users');
+  const [uRows] = await connection.query(`SELECT COUNT(*) AS total FROM \`${dbName}\`.\`users\``);
   if (Number(uRows[0].total) > 1) {
     console.log('[Auto-Seed] Demo data already exists, skipping auto-seed.');
     return;
@@ -59,16 +61,16 @@ async function autoSeedDemoData(connection) {
 
   const userIds = {};
   for (const [uName, uEmail, uPass, uRole] of usersData) {
-    const [existing] = await connection.query('SELECT id FROM users WHERE email = ?', [uEmail]);
+    const [existing] = await connection.query(`SELECT id FROM \`${dbName}\`.\`users\` WHERE email = ?`, [uEmail]);
     if (existing.length > 0) {
       userIds[uEmail] = existing[0].id;
       await connection.query(
-        'UPDATE users SET name = ?, password = ?, role = ? WHERE id = ?',
+        `UPDATE \`${dbName}\`.\`users\` SET name = ?, password = ?, role = ? WHERE id = ?`,
         [uName, uPass, uRole, existing[0].id]
       );
     } else {
       const [res] = await connection.query(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+        `INSERT INTO \`${dbName}\`.\`users\` (name, email, password, role) VALUES (?, ?, ?, ?)`,
         [uName, uEmail, uPass, uRole]
       );
       userIds[uEmail] = res.insertId;
@@ -91,12 +93,12 @@ async function autoSeedDemoData(connection) {
 
   const projectIds = {};
   for (const [pName, pDesc, pStatus, pCreatedBy] of projectsData) {
-    const [existingP] = await connection.query('SELECT id FROM projects WHERE name = ?', [pName]);
+    const [existingP] = await connection.query(`SELECT id FROM \`${dbName}\`.\`projects\` WHERE name = ?`, [pName]);
     if (existingP.length > 0) {
       projectIds[pName] = existingP[0].id;
     } else {
       const [res] = await connection.query(
-        'INSERT INTO projects (name, description, status, created_by) VALUES (?, ?, ?, ?)',
+        `INSERT INTO \`${dbName}\`.\`projects\` (name, description, status, created_by) VALUES (?, ?, ?, ?)`,
         [pName, pDesc, pStatus, pCreatedBy]
       );
       projectIds[pName] = res.insertId;
@@ -125,10 +127,10 @@ async function autoSeedDemoData(connection) {
   ];
 
   for (const [uId, aId, pId, title, desc, note, priority, status, dayOffset] of tasksData) {
-    const [existingT] = await connection.query('SELECT id FROM tasks WHERE title = ?', [title]);
+    const [existingT] = await connection.query(`SELECT id FROM \`${dbName}\`.\`tasks\` WHERE title = ?`, [title]);
     if (existingT.length === 0) {
       await connection.query(
-        `INSERT INTO tasks (user_id, assigned_to, project_id, title, description, completion_note, priority, status, due_date)
+        `INSERT INTO \`${dbName}\`.\`tasks\` (user_id, assigned_to, project_id, title, description, completion_note, priority, status, due_date)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY))`,
         [uId, aId, pId, title, desc, note, priority, status, dayOffset]
       );
@@ -143,10 +145,13 @@ async function testConnection() {
     const connection = await pool.getConnection();
     console.log('MySQL connected successfully');
 
+    // Force selection of target database
+    await connection.query(`USE \`${dbName}\``);
+
     // 1. Ensure users table exists
     await runSql(
       connection,
-      `CREATE TABLE IF NOT EXISTS users (
+      `CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`users\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
         email VARCHAR(150) NOT NULL UNIQUE,
@@ -161,7 +166,7 @@ async function testConnection() {
     // 2. Ensure projects table exists
     await runSql(
       connection,
-      `CREATE TABLE IF NOT EXISTS projects (
+      `CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`projects\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         description TEXT NULL,
@@ -177,7 +182,7 @@ async function testConnection() {
     // 3. Ensure tasks table exists
     await runSql(
       connection,
-      `CREATE TABLE IF NOT EXISTS tasks (
+      `CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`tasks\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         assigned_to INT NULL,
@@ -200,7 +205,7 @@ async function testConnection() {
     // 4. Ensure refresh_tokens table exists
     await runSql(
       connection,
-      `CREATE TABLE IF NOT EXISTS refresh_tokens (
+      `CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`refresh_tokens\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         jti VARCHAR(36) NOT NULL UNIQUE,
@@ -211,10 +216,10 @@ async function testConnection() {
       'create refresh_tokens table'
     );
 
-    // 5. Ensure task_commits table exists (for multi-employee task work log)
+    // 5. Ensure task_commits table exists
     await runSql(
       connection,
-      `CREATE TABLE IF NOT EXISTS task_commits (
+      `CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`task_commits\` (
         id INT AUTO_INCREMENT PRIMARY KEY,
         task_id INT NOT NULL,
         user_id INT NOT NULL,
@@ -227,34 +232,34 @@ async function testConnection() {
       'create task_commits table'
     );
 
-    // 5. Ensure missing columns are added if tables already existed
+    // 6. Ensure missing columns are added if tables already existed
     await runSql(
       connection,
-      "ALTER TABLE users ADD COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'",
+      `ALTER TABLE \`${dbName}\`.\`users\` ADD COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'`,
       'add users.role column'
     );
     await runSql(
       connection,
-      "ALTER TABLE users MODIFY COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'",
+      `ALTER TABLE \`${dbName}\`.\`users\` MODIFY COLUMN role ENUM('admin','task_manager','employee') NOT NULL DEFAULT 'employee'`,
       'modify users.role enum'
     );
     await runSql(
       connection,
-      "ALTER TABLE tasks ADD COLUMN assigned_to INT NULL",
+      `ALTER TABLE \`${dbName}\`.\`tasks\` ADD COLUMN assigned_to INT NULL`,
       'add tasks.assigned_to'
     );
     await runSql(
       connection,
-      "ALTER TABLE tasks ADD COLUMN project_id INT NULL",
+      `ALTER TABLE \`${dbName}\`.\`tasks\` ADD COLUMN project_id INT NULL`,
       'add tasks.project_id'
     );
     await runSql(
       connection,
-      "ALTER TABLE tasks ADD COLUMN completion_note TEXT NULL",
+      `ALTER TABLE \`${dbName}\`.\`tasks\` ADD COLUMN completion_note TEXT NULL`,
       'add tasks.completion_note'
     );
 
-    // 6. Auto-seed demo users, projects, and tasks
+    // 7. Auto-seed demo users, projects, and tasks
     await autoSeedDemoData(connection);
 
     connection.release();
