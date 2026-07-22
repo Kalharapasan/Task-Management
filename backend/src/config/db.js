@@ -17,11 +17,40 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
+async function runAutoMigration(connection, sql) {
+  try {
+    await connection.query(sql);
+  } catch (err) {
+    if (err.code === 'ER_DUP_FIELDNAME' || err.errno === 1060) {
+      // Column already exists, safe to ignore
+    } else {
+      console.warn('[Auto-Migration]', err.message);
+    }
+  }
+}
+
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
     console.log('MySQL connected successfully');
+
+    // Automatically ensure role and assigned_to columns exist on boot
+    await runAutoMigration(
+      connection,
+      "ALTER TABLE users ADD COLUMN role ENUM('admin','employee') NOT NULL DEFAULT 'employee'"
+    );
+    await runAutoMigration(
+      connection,
+      "ALTER TABLE tasks ADD COLUMN assigned_to INT NULL AFTER user_id"
+    );
+
+    // Ensure default admin user has admin role
+    try {
+      await connection.query("UPDATE users SET role = 'admin' WHERE email = 'admin@test.com'");
+    } catch (_) {}
+
     connection.release();
+    console.log('Database schema auto-migrated and ready.');
   } catch (error) {
     console.error('Unable to connect to MySQL:', error.message);
     console.error('Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME in your .env file.');
