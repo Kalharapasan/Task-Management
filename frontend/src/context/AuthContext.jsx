@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-
   useEffect(() => {
     const controller = new AbortController();
     let isMounted = true;
@@ -18,10 +17,7 @@ export function AuthProvider({ children }) {
         setAccessToken(response.data.data.accessToken);
         if (isMounted) setUser(response.data.data.user);
       } catch (err) {
-        // Aborted by StrictMode cleanup — not a real error, ignore silently.
         if (err?.code === 'ERR_CANCELED' || controller.signal.aborted) return;
-
-        // A 401 means no active session cookie — expected on first visit / after logout.
         if (err?.response?.status !== 401) {
           console.error('[AuthContext] Session rehydration failed:', err?.message ?? err);
         }
@@ -41,11 +37,14 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const response = await authApi.login(email, password);
     const { accessToken, user: loggedInUser } = response.data.data;
-
     setAccessToken(accessToken);
     setUser(loggedInUser);
-
     return loggedInUser;
+  }, []);
+
+  const register = useCallback(async (name, email, password) => {
+    const response = await authApi.register(name, email, password);
+    return response.data;
   }, []);
 
   const logout = useCallback(async () => {
@@ -59,7 +58,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const value = { user, isLoading, isAuthenticated: !!user, login, logout };
+  const isAdmin = user?.role === 'admin';
+
+  const value = {
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    isAdmin,
+    login,
+    register,
+    logout,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

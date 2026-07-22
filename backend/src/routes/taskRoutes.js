@@ -1,40 +1,33 @@
 const express = require('express');
 const {
-  getTasks,
-  getTaskById,
-  createTask,
-  updateTask,
-  deleteTask,
-  getDashboardStats,
-  bulkUpdateStatus,
-  bulkDeleteTasks,
+  getTasks, getTaskById, createTask, updateTask,
+  deleteTask, getDashboardStats, bulkUpdateStatus, bulkDeleteTasks,
 } = require('../controllers/taskController');
 const {
-  createTaskValidator,
-  updateTaskValidator,
-  idParamValidator,
-  bulkUpdateStatusValidator,
-  bulkIdsValidator,
+  createTaskValidator, updateTaskValidator,
+  idParamValidator, bulkUpdateStatusValidator, bulkIdsValidator,
 } = require('../validators/taskValidators');
 const validate = require('../middleware/validate');
 const requireAuth = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Every task route requires a valid JWT.
+// All task routes require a valid JWT.
 router.use(requireAuth);
 
 router.get('/stats/dashboard', getDashboardStats);
 
-// Bulk routes must be declared before "/:id" so "bulk" isn't swallowed
-// by the numeric id param matcher.
-router.patch('/bulk/status', bulkUpdateStatusValidator, validate, bulkUpdateStatus);
-router.delete('/bulk', bulkIdsValidator, validate, bulkDeleteTasks);
+// Bulk routes before /:id so "bulk" isn't treated as a numeric id param.
+router.patch('/bulk/status', requireAdmin, bulkUpdateStatusValidator, validate, bulkUpdateStatus);
+router.delete('/bulk', requireAdmin, bulkIdsValidator, validate, bulkDeleteTasks);
 
 router.get('/', getTasks);
 router.get('/:id', idParamValidator, validate, getTaskById);
-router.post('/', createTaskValidator, validate, createTask);
-router.put('/:id', updateTaskValidator, validate, updateTask);
-router.delete('/:id', idParamValidator, validate, deleteTask);
+
+// Create & delete are admin-only; update is available to both roles (controller enforces field restrictions).
+router.post('/', requireAdmin, createTaskValidator, validate, createTask);
+router.put('/:id', idParamValidator, validate, updateTask);
+router.delete('/:id', requireAdmin, idParamValidator, validate, deleteTask);
 
 module.exports = router;

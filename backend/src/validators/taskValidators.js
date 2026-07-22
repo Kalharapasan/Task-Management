@@ -34,6 +34,10 @@ const createTaskValidator = [
     .withMessage('Due date must be a valid date (YYYY-MM-DD)')
     .custom(isTodayOrLater)
     .withMessage('Due date cannot be earlier than today'),
+  body('assigned_to')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('assigned_to must be a valid employee id'),
 ];
 
 const updateTaskValidator = [

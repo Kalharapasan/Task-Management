@@ -33,8 +33,8 @@ services:
       CLIENT_URL: http://localhost:5173
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: task_management
-      DB_USER: root
+      DB_NAME: sql12833613
+      DB_USER: sql12833613
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       JWT_SECRET: ${JWT_SECRET:-change_this_secret}
       ACCESS_TOKEN_EXPIRES_IN: 15m

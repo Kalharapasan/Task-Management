@@ -1,9 +1,3 @@
--- ==========================================
--- Task Management System Database
--- Compatible with FreeSQLDatabase (MySQL 5.5)
--- Database: sql12833613
--- ==========================================
-
 USE sql12833613;
 
 -- ==========================================

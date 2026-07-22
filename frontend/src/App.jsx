@@ -4,16 +4,22 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 
 function LoginRoute() {
   const { isAuthenticated, isLoading } = useAuth();
-
   if (isLoading) return null;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
-
   return <Login />;
+}
+
+function RegisterRoute() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <Register />;
 }
 
 export default function App() {
@@ -23,6 +29,7 @@ export default function App() {
         <ToastProvider>
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
+            <Route path="/register" element={<RegisterRoute />} />
             <Route
               path="/dashboard"
               element={

@@ -1,20 +1,14 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  // Required so the httpOnly refresh-token cookie is sent to /auth/refresh
-  // and /auth/logout, even though the frontend and API run on different ports.
+
   withCredentials: true,
 });
 
-// The access token lives in memory (module-level variable), not
-// localStorage/cookies, so it disappears on a full page reload by
-// design — AuthContext re-obtains one via a silent /auth/refresh call
-// on startup instead. This keeps the long-lived credential (the
-// refresh token) exclusively in an httpOnly cookie the JS can't touch.
 let accessToken = null;
 
 export function setAccessToken(token) {
@@ -32,10 +26,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// If a request comes back 401 (expired access token), try exactly once
-// to silently refresh it using the httpOnly cookie, then replay the
-// original request. If the refresh itself fails, the session is truly
-// over and the app redirects to /login.
+
 let refreshPromise = null;
 
 apiClient.interceptors.response.use(
@@ -73,9 +64,14 @@ apiClient.interceptors.response.use(
 
 export const authApi = {
   login: (email, password) => apiClient.post('/auth/login', { email, password }),
+  register: (name, email, password) => apiClient.post('/auth/register', { name, email, password }),
   refresh: (config) => apiClient.post('/auth/refresh', undefined, config),
   logout: () => apiClient.post('/auth/logout'),
   me: () => apiClient.get('/auth/me'),
+};
+
+export const userApi = {
+  getEmployees: () => apiClient.get('/users/employees'),
 };
 
 export const taskApi = {
